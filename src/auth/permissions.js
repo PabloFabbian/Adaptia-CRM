@@ -1,27 +1,23 @@
-// Adaptia - Permisos Flexibles (Node.js)
-
+// Adaptia - Sistema de Permisos Flexibles
 export const CAPABILITIES = {
     VIEW_ALL_APPOINTMENTS: 'clinic:appointments:view_all',
     VIEW_ALL_PATIENTS: 'clinic:patients:view_all',
+    MANAGE_MEMBERS: 'clinic:members:manage'
 };
 
 export const SCOPES = {
     SHARE_APPOINTMENTS: 'member:share:appointments',
-    SHARE_PATIENTS: 'member:share:patients',
+    SHARE_PATIENTS: 'member:share:patients'
 };
 
-/**
- * Validador Maestro de Adaptia
- */
-export const canAccessResource = (reqMember, resourceOwner, capability, scope) => {
-    // 1. Si el psicólogo es dueño del recurso, acceso total
-    if (reqMember.id === resourceOwner.id) return true;
+// Asegúrate de que el nombre sea "hasPermission"
+export const hasPermission = (requestingMember, ownerMember, capability, scope) => {
+    // Si soy el dueño del recurso, siempre tengo acceso
+    if (requestingMember.id === ownerMember.id) return true;
 
-    // 2. ¿Tiene el rol la capacidad técnica?
-    const hasCapability = reqMember.role.capabilities.includes(capability);
+    // Verificamos Capacidad (del Rol) y Consentimiento (del Dueño)
+    const canDoIt = requestingMember.role.capabilities.includes(capability);
+    const isAllowedByOwner = ownerMember.consents.includes(scope);
 
-    // 3. ¿El dueño otorgó el permiso a la clínica (scope)?
-    const hasScope = resourceOwner.consents.includes(scope);
-
-    return hasCapability && hasScope;
+    return canDoIt && isAllowedByOwner;
 };

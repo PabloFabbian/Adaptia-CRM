@@ -1,4 +1,5 @@
 // Adaptia - Sistema de Permisos Flexibles
+
 export const CAPABILITIES = {
     VIEW_ALL_APPOINTMENTS: 'clinic:appointments:view_all',
     VIEW_ALL_PATIENTS: 'clinic:patients:view_all',

@@ -1,0 +1,21 @@
+{
+  "name": "adaptia-clinic",
+  "version": "1.0.0",
+  "description": "Sistema de gestión para psicólogos basado en colaboración entre iguales.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PabloFabbian/Adaptia-clinic.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PabloFabbian/Adaptia-clinic/issues"
+  },
+  "homepage": "https://github.com/PabloFabbian/Adaptia-clinic#readme"
+}

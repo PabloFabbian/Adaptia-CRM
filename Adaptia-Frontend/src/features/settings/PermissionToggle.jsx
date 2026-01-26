@@ -1,22 +1,28 @@
-import { useState } from 'react';
+// src/features/settings/PermissionToggle.jsx
+import { useClinics } from '../../hooks/useClinics';
 
-export const PermissionToggle = ({ onUpdate }) => {
-    const [isLoading, setIsLoading] = useState(false);
+export const PermissionToggle = ({ memberId, resourceType, label, initialValue }) => {
+    const { toggleConsent, loading } = useClinics();
 
-    const handleToggle = async () => {
-        setIsLoading(true);
-        await fetch('http://localhost:3000/toggle-esteban');
-        onUpdate();
-        setIsLoading(false);
+    const handleChange = async (e) => {
+        const newValue = e.target.checked;
+        await toggleConsent(memberId, resourceType, newValue);
+        // Opcional: Podrías disparar una notificación de "Guardado"
     };
 
     return (
-        <button
-            onClick={handleToggle}
-            disabled={isLoading}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-200/50 text-sm font-light text-gray-700 hover:from-blue-500/20 hover:to-purple-500/20 transition-all duration-300 disabled:opacity-50"
-        >
-            {isLoading ? 'Actualizando...' : 'Simular Consentimiento de Esteban'}
-        </button>
+        <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
+            <span className="text-sm text-gray-700">{label}</span>
+            <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    defaultChecked={initialValue}
+                    onChange={handleChange}
+                    disabled={loading}
+                />
+                <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+            </label>
+        </div>
     );
 };

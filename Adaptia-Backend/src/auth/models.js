@@ -1,5 +1,3 @@
-// src/auth/models.js
-
 /**
  * ADAPTIA - ESQUEMA DE BASE DE DATOS PROFESIONAL
  * Este esquema permite la colaboración entre iguales (psicólogos)

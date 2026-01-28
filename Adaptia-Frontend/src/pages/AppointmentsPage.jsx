@@ -1,14 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 export const AppointmentsPage = () => {
     const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Ahora esta ruta ya existe en el Backend
         fetch('http://localhost:3001/api/appointments/all')
-            .then(res => res.json())
-            .then(json => setData(json.data));
+            .then(res => {
+                if (!res.ok) throw new Error('Error en la respuesta del servidor');
+                return res.json();
+            })
+            .then(json => {
+                // Verificamos que json.data sea un array antes de guardarlo
+                setData(Array.isArray(json.data) ? json.data : []);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error("Error al cargar citas:", err);
+                setLoading(false);
+            });
     }, []);
+
+    if (loading) return <div className="p-8 text-gray-400">Cargando base de citas...</div>;
 
     return (
         <div className="p-8">
@@ -24,15 +39,24 @@ export const AppointmentsPage = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                         {data.length === 0 ? (
-                            <tr><td colSpan="3" className="px-6 py-10 text-center text-gray-400">Sin citas registradas</td></tr>
+                            <tr>
+                                <td colSpan="3" className="px-6 py-10 text-center text-gray-400 font-light italic">
+                                    No se encontraron citas en la base de datos de Neon.
+                                </td>
+                            </tr>
                         ) : (
                             data.map(item => (
                                 <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-gray-900">{item.patient_name}</td>
-                                    <td className="px-6 py-4 text-gray-600">{item.date}</td>
+                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                        {item.patient_name || 'Paciente sin nombre'}
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-600">
+                                        {item.date ? new Date(item.date).toLocaleDateString() : 'Sin fecha'}
+                                    </td>
                                     <td className="px-6 py-4">
-                                        <span className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-2 py-1 rounded-full w-fit text-[11px]">
-                                            <Clock size={12} /> {item.status}
+                                        <span className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full w-fit text-[11px] font-medium">
+                                            <Clock size={12} strokeWidth={2} />
+                                            {item.status || 'Pendiente'}
                                         </span>
                                     </td>
                                 </tr>

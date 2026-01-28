@@ -33,15 +33,17 @@ pool.query(createDatabaseSchema)
 
 app.get('/', (req, res) => res.send('🚀 Adaptia API Operativa'));
 
-// BASE: CITAS (Filtradas por seguridad)
-app.get('/api/appointments', async (req, res) => {
+// BASE: CITAS (Actualizada para soportar /all y evitar 404)
+app.get(['/api/appointments', '/api/appointments/all'], async (req, res) => {
     try {
         const viewerMemberId = 1;
         const clinicId = 1;
         let filter;
+
         try {
             filter = await getResourceFilter(req.pool, viewerMemberId, clinicId, 'appointments');
         } catch (e) {
+            // Si falla el sistema de permisos, mostramos todo por defecto para desarrollo
             filter = { query: '1=1', params: [] };
         }
 
@@ -49,12 +51,17 @@ app.get('/api/appointments', async (req, res) => {
             SELECT a.*, p.name as patient_name 
             FROM appointments a
             LEFT JOIN patients p ON a.patient_id = p.id
-            WHERE ${filter.query} ORDER BY a.date DESC
+            WHERE ${filter.query} 
+            ORDER BY a.date DESC
         `;
+
         const { rows } = await req.pool.query(query, filter.params);
         res.json({ user: "Luis David", data: rows || [] });
+
     } catch (err) {
-        res.status(200).json({ data: [] });
+        console.error("❌ Error en SQL:", err.message);
+        // Enviamos un JSON vacío en lugar de dejar que explote o mande HTML
+        res.status(200).json({ data: [], message: "Error controlado" });
     }
 });
 

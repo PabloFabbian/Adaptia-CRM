@@ -29,11 +29,37 @@ pool.query(createDatabaseSchema)
     .then(() => console.log("✨ Tablas sincronizadas en Neon"))
     .catch(err => console.error("❌ Error DB:", err));
 
-// --- 3. ENDPOINTS (LAS BASES) ---
+// --- 3. ENDPOINTS DE AUTENTICACIÓN ---
+
+app.post('/api/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        // Ajustado a la tabla 'users' y columna 'password_hash' según tu DB de Neon
+        const query = 'SELECT id, name, email, password_hash FROM users WHERE email = $1';
+        const { rows } = await pool.query(query, [email]);
+
+        if (rows.length > 0) {
+            const user = rows[0];
+
+            // Validación directa (texto plano por ahora para tu MVP)
+            if (user.password_hash === password) {
+                // Eliminamos el hash antes de enviar la respuesta al frontend
+                const { password_hash: _, ...userWithoutPassword } = user;
+                return res.json({ user: userWithoutPassword });
+            }
+        }
+        res.status(401).json({ message: "Email o contraseña incorrectos" });
+    } catch (err) {
+        console.error("❌ Error en Login:", err.message);
+        res.status(500).json({ message: "Error interno del servidor" });
+    }
+});
+
+// --- 4. ENDPOINTS DE RECURSOS ---
 
 app.get('/', (req, res) => res.send('🚀 Adaptia API Operativa'));
 
-// BASE: CITAS (Actualizada para soportar /all y evitar 404)
+// CITAS: Con filtros de permisos y resolución de ambigüedad
 app.get(['/api/appointments', '/api/appointments/all'], async (req, res) => {
     try {
         const viewerMemberId = 1;
@@ -43,29 +69,29 @@ app.get(['/api/appointments', '/api/appointments/all'], async (req, res) => {
         try {
             filter = await getResourceFilter(req.pool, viewerMemberId, clinicId, 'appointments');
         } catch (e) {
-            // Si falla el sistema de permisos, mostramos todo por defecto para desarrollo
             filter = { query: '1=1', params: [] };
         }
 
         const query = `
-            SELECT a.*, p.name as patient_name 
+            SELECT 
+                a.id, a.date, a.status, a.owner_member_id, 
+                p.name as patient_name 
             FROM appointments a
             LEFT JOIN patients p ON a.patient_id = p.id
-            WHERE ${filter.query} 
+            WHERE a.${filter.query} 
             ORDER BY a.date DESC
         `;
 
         const { rows } = await req.pool.query(query, filter.params);
-        res.json({ user: "Luis David", data: rows || [] });
+        res.json({ data: rows || [] });
 
     } catch (err) {
-        console.error("❌ Error en SQL:", err.message);
-        // Enviamos un JSON vacío en lugar de dejar que explote o mande HTML
+        console.error("❌ Error en SQL Appointments:", err.message);
         res.status(200).json({ data: [], message: "Error controlado" });
     }
 });
 
-// BASE: PACIENTES
+// PACIENTES: Lista general
 app.get('/api/patients', async (req, res) => {
     try {
         const { rows } = await pool.query('SELECT * FROM patients ORDER BY name ASC');
@@ -75,7 +101,7 @@ app.get('/api/patients', async (req, res) => {
     }
 });
 
-// BASE: CLÍNICAS
+// CLÍNICAS: Lista general
 app.get('/api/clinics', async (req, res) => {
     try {
         const { rows } = await pool.query('SELECT * FROM clinics ORDER BY id ASC');
@@ -85,19 +111,32 @@ app.get('/api/clinics', async (req, res) => {
     }
 });
 
-// ACCIONES: REGISTRO
+// ACCIONES: REGISTRO DE PACIENTE
 app.post('/api/patients', async (req, res) => {
     try {
-        const { name, ownerMemberId } = req.body;
-        const query = 'INSERT INTO patients (name, owner_member_id, history) VALUES ($1, $2, \'{}\'::jsonb) RETURNING *';
-        const { rows } = await req.pool.query(query, [name, ownerMemberId || 1]);
+        const { name, ownerMemberId, history } = req.body;
+
+        const query = `
+            INSERT INTO patients (name, owner_member_id, history) 
+            VALUES ($1, $2, $3) 
+            RETURNING *
+        `;
+
+        const values = [
+            name,
+            ownerMemberId || 1,
+            history ? JSON.stringify(history) : '{}'
+        ];
+
+        const { rows } = await req.pool.query(query, values);
         res.status(201).json({ data: rows[0] });
     } catch (err) {
-        res.status(500).json({ error: "Error al crear" });
+        console.error("❌ Error al crear paciente:", err.message);
+        res.status(500).json({ error: "Error al crear el registro en la nube" });
     }
 });
 
-// ACCIONES: CONSENTIMIENTO
+// ACCIONES: CONSENTIMIENTO (Toggle)
 app.get('/api/toggle-esteban', async (req, res) => {
     try {
         const current = await pool.query("SELECT is_granted FROM consents WHERE member_id = 2 AND resource_type = 'appointments'");

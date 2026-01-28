@@ -1,10 +1,12 @@
-import { useState, useRef } from 'react'; // 1. Importamos useRef
+import { useState, useRef } from 'react';
 import { UserPlus, ArrowLeft, Mail, Phone, CreditCard, MapPin, AlertCircle, ExternalLink, Calendar, Save } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // Importante para la propiedad de los datos
 
 export const NewPatient = () => {
     const navigate = useNavigate();
-    const errorRef = useRef(null); // 2. Creamos la referencia para el contenedor de errores
+    const { user } = useAuth(); // Obtenemos el psicólogo logueado
+    const errorRef = useRef(null);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -14,11 +16,11 @@ export const NewPatient = () => {
         name: '', email: '', phone: '', dni: '', address: '', birthDate: ''
     });
 
-    // Función auxiliar para hacer scroll suave al error
+    // Función para llevar la vista al mensaje de error
     const scrollToError = () => {
         setTimeout(() => {
             errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100); // Pequeño delay para asegurar que el DOM se renderizó
+        }, 100);
     };
 
     const handleChange = (e) => {
@@ -33,6 +35,7 @@ export const NewPatient = () => {
         setError('');
 
         try {
+            // 1. Verificación de duplicados en la base de datos
             const checkRes = await fetch('http://localhost:3001/api/patients');
             const { data } = await checkRes.json();
 
@@ -45,29 +48,29 @@ export const NewPatient = () => {
                 setError(`El paciente "${existing.name}" ya está registrado.`);
                 setDuplicatePatient(existing);
                 setLoading(false);
-                scrollToError(); // 3. Ejecutamos el scroll cuando hay duplicado
+                scrollToError();
                 return;
             }
 
+            // 2. Registro en Neon con el ID del usuario actual
             const response = await fetch('http://localhost:3001/api/patients', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: formData.name,
-                    ownerMemberId: 1,
-                    history: { ...formData }
+                    ownerMemberId: user?.id || 1, // Usa el ID del login o 1 por defecto
+                    history: { ...formData }      // Se guarda como JSONB en el backend
                 })
             });
 
             if (response.ok) {
                 navigate('/pacientes');
             } else {
-                setError('Error al guardar en la base de datos cloud.');
-                scrollToError(); // 3. Ejecutamos el scroll si falla el servidor
+                throw new Error('Error en la respuesta del servidor');
             }
         } catch (err) {
-            setError('Error de conexión con el servidor.');
-            scrollToError(); // 3. Ejecutamos el scroll en error de red
+            setError('Error al conectar con la base de datos cloud.');
+            scrollToError();
         } finally {
             setLoading(false);
         }
@@ -75,6 +78,7 @@ export const NewPatient = () => {
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8 animate-in fade-in duration-500">
+            {/* Header y Navegación */}
             <Link to="/pacientes" className="flex items-center gap-2 text-gray-400 hover:text-gray-600 mb-6 text-sm transition-colors group">
                 <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
                 Volver a la base de datos
@@ -91,7 +95,7 @@ export const NewPatient = () => {
                     </div>
                 </div>
 
-                {/* 4. Envolvemos el error en un div con la ref */}
+                {/* ALERTA DE ERROR CON AUTO-SCROLL */}
                 <div ref={errorRef}>
                     {error && (
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-red-50 border border-red-100 text-red-700 rounded-2xl mt-6 animate-in slide-in-from-top-4">
@@ -126,7 +130,7 @@ export const NewPatient = () => {
                             <label className="block text-sm font-medium text-gray-600 mb-2">Nombre Completo</label>
                             <input
                                 name="name" required value={formData.name} onChange={handleChange}
-                                className={`w-full px-4 py-3 rounded-xl border outline-none transition-all ${error.includes('nombre') ? 'border-red-300 ring-4 ring-red-50' : 'border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100'}`}
+                                className={`w-full px-4 py-3 rounded-xl border outline-none transition-all ${error.includes('registrado') ? 'border-red-300 ring-4 ring-red-50' : 'border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100'}`}
                                 placeholder="Ej. Juan Pérez García"
                             />
                         </div>
@@ -136,7 +140,7 @@ export const NewPatient = () => {
                                 <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                     name="dni" required value={formData.dni} onChange={handleChange}
-                                    className={`w-full pl-12 pr-4 py-3 rounded-xl border outline-none transition-all ${error.includes('DNI') ? 'border-red-300 ring-4 ring-red-50' : 'border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100'}`}
+                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100 outline-none transition-all"
                                     placeholder="12345678X"
                                 />
                             </div>
@@ -197,7 +201,7 @@ export const NewPatient = () => {
                     </div>
                 </div>
 
-                {/* ACCIONES FINALIZAR */}
+                {/* ACCIONES FINALES */}
                 <div className="flex items-center justify-end gap-4 pt-4 pb-12">
                     <button
                         type="button"

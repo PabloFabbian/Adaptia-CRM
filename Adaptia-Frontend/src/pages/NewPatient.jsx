@@ -1,21 +1,25 @@
-import { useState } from 'react';
-import { UserPlus, Save, ArrowLeft, Mail, Phone, CreditCard, MapPin, AlertCircle, ExternalLink } from 'lucide-react';
+import { useState, useRef } from 'react'; // 1. Importamos useRef
+import { UserPlus, ArrowLeft, Mail, Phone, CreditCard, MapPin, AlertCircle, ExternalLink, Calendar, Save } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export const NewPatient = () => {
     const navigate = useNavigate();
+    const errorRef = useRef(null); // 2. Creamos la referencia para el contenedor de errores
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [duplicatePatient, setDuplicatePatient] = useState(null); // Almacena el objeto del duplicado
+    const [duplicatePatient, setDuplicatePatient] = useState(null);
 
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        phone: '',
-        dni: '',
-        address: '',
-        birthDate: ''
+        name: '', email: '', phone: '', dni: '', address: '', birthDate: ''
     });
+
+    // Función auxiliar para hacer scroll suave al error
+    const scrollToError = () => {
+        setTimeout(() => {
+            errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100); // Pequeño delay para asegurar que el DOM se renderizó
+    };
 
     const handleChange = (e) => {
         setError('');
@@ -29,37 +33,41 @@ export const NewPatient = () => {
         setError('');
 
         try {
-            // 1. Verificación de integridad y duplicados
             const checkRes = await fetch('http://localhost:3001/api/patients');
             const { data } = await checkRes.json();
 
-            // Buscamos si ya existe por DNI o por Nombre (ignorando mayúsculas)
             const existing = data.find(p =>
                 (p.history?.dni === formData.dni && formData.dni !== '') ||
                 p.name.toLowerCase() === formData.name.toLowerCase()
             );
 
             if (existing) {
-                setError(`Ya existe un paciente con el nombre: ${existing.name}`);
+                setError(`El paciente "${existing.name}" ya está registrado.`);
                 setDuplicatePatient(existing);
                 setLoading(false);
+                scrollToError(); // 3. Ejecutamos el scroll cuando hay duplicado
                 return;
             }
 
-            // 2. Registro si la validación es exitosa
             const response = await fetch('http://localhost:3001/api/patients', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: formData.name,
                     ownerMemberId: 1,
-                    details: formData // Se guarda en el campo JSONB de la base de datos
+                    history: { ...formData }
                 })
             });
 
-            if (response.ok) navigate('/pacientes');
+            if (response.ok) {
+                navigate('/pacientes');
+            } else {
+                setError('Error al guardar en la base de datos cloud.');
+                scrollToError(); // 3. Ejecutamos el scroll si falla el servidor
+            }
         } catch (err) {
-            setError('Error de comunicación con el servidor de base de datos.');
+            setError('Error de conexión con el servidor.');
+            scrollToError(); // 3. Ejecutamos el scroll en error de red
         } finally {
             setLoading(false);
         }
@@ -79,29 +87,31 @@ export const NewPatient = () => {
                     </div>
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Registro de Paciente</h1>
-                        <p className="text-gray-500 text-sm">Crea una nueva ficha clínica digital en la nube</p>
+                        <p className="text-gray-500 text-sm">Crea una nueva ficha clínica digital</p>
                     </div>
                 </div>
 
-                {/* Banner de Error con Acceso Directo al Perfil */}
-                {error && (
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-red-50 border border-red-100 text-red-700 rounded-2xl mt-6 animate-in slide-in-from-top-4">
-                        <div className="flex items-center gap-3">
-                            <AlertCircle size={20} className="text-red-500 shrink-0" />
-                            <span className="text-sm font-semibold">{error}</span>
+                {/* 4. Envolvemos el error en un div con la ref */}
+                <div ref={errorRef}>
+                    {error && (
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-red-50 border border-red-100 text-red-700 rounded-2xl mt-6 animate-in slide-in-from-top-4">
+                            <div className="flex items-center gap-3">
+                                <AlertCircle size={20} className="text-red-500 shrink-0" />
+                                <span className="text-sm font-semibold">{error}</span>
+                            </div>
+                            {duplicatePatient && (
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/pacientes?open=${duplicatePatient.id}`)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-xl text-xs font-bold hover:bg-red-50 transition-all shadow-sm shrink-0"
+                                >
+                                    <ExternalLink size={14} />
+                                    Abrir Perfil Existente
+                                </button>
+                            )}
                         </div>
-                        {duplicatePatient && (
-                            <button
-                                type="button"
-                                onClick={() => navigate(`/pacientes?open=${duplicatePatient.id}`)}
-                                className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-xl text-xs font-bold hover:bg-red-50 transition-all shadow-sm shrink-0"
-                            >
-                                <ExternalLink size={14} />
-                                Ver Perfil de {duplicatePatient.name.split(' ')[0]}
-                            </button>
-                        )}
-                    </div>
-                )}
+                    )}
+                </div>
             </header>
 
             <form onSubmit={handleSubmit} className="space-y-8">
@@ -115,10 +125,7 @@ export const NewPatient = () => {
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-600 mb-2">Nombre Completo</label>
                             <input
-                                name="name"
-                                required
-                                value={formData.name}
-                                onChange={handleChange}
+                                name="name" required value={formData.name} onChange={handleChange}
                                 className={`w-full px-4 py-3 rounded-xl border outline-none transition-all ${error.includes('nombre') ? 'border-red-300 ring-4 ring-red-50' : 'border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100'}`}
                                 placeholder="Ej. Juan Pérez García"
                             />
@@ -128,10 +135,7 @@ export const NewPatient = () => {
                             <div className="relative">
                                 <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
-                                    name="dni"
-                                    required
-                                    value={formData.dni}
-                                    onChange={handleChange}
+                                    name="dni" required value={formData.dni} onChange={handleChange}
                                     className={`w-full pl-12 pr-4 py-3 rounded-xl border outline-none transition-all ${error.includes('DNI') ? 'border-red-300 ring-4 ring-red-50' : 'border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100'}`}
                                     placeholder="12345678X"
                                 />
@@ -139,21 +143,21 @@ export const NewPatient = () => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-600 mb-2">Fecha de Nacimiento</label>
-                            <input
-                                name="birthDate"
-                                type="date"
-                                value={formData.birthDate}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100 outline-none transition-all"
-                            />
+                            <div className="relative">
+                                <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    name="birthDate" type="date" value={formData.birthDate} onChange={handleChange}
+                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100 outline-none transition-all"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* SECCIÓN 2: CONTACTO Y UBICACIÓN */}
+                {/* SECCIÓN 2: CONTACTO */}
                 <div className="bg-white border border-gray-100 rounded-3xl p-8 shadow-sm">
                     <h2 className="text-lg font-semibold mb-6 flex items-center gap-2 text-gray-800">
-                        <span className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-sm font-bold">2</span>
+                        <span className="w-8 h-8 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-sm font-bold">2</span>
                         Contacto y Ubicación
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -162,10 +166,7 @@ export const NewPatient = () => {
                             <div className="relative">
                                 <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
-                                    name="email"
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
+                                    name="email" type="email" value={formData.email} onChange={handleChange}
                                     className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all"
                                     placeholder="nombre@ejemplo.com"
                                 />
@@ -176,10 +177,7 @@ export const NewPatient = () => {
                             <div className="relative">
                                 <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
-                                    name="phone"
-                                    type="tel"
-                                    value={formData.phone}
-                                    onChange={handleChange}
+                                    name="phone" type="tel" value={formData.phone} onChange={handleChange}
                                     className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all"
                                     placeholder="+34 600 000 000"
                                 />
@@ -190,9 +188,7 @@ export const NewPatient = () => {
                             <div className="relative">
                                 <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
-                                    name="address"
-                                    value={formData.address}
-                                    onChange={handleChange}
+                                    name="address" value={formData.address} onChange={handleChange}
                                     className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all"
                                     placeholder="Calle, Número, Ciudad"
                                 />
@@ -201,7 +197,8 @@ export const NewPatient = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-4 pt-4">
+                {/* ACCIONES FINALIZAR */}
+                <div className="flex items-center justify-end gap-4 pt-4 pb-12">
                     <button
                         type="button"
                         onClick={() => navigate('/pacientes')}
@@ -211,14 +208,9 @@ export const NewPatient = () => {
                     </button>
                     <button
                         disabled={loading}
-                        className="px-10 py-3 bg-gray-900 text-white rounded-xl font-semibold flex items-center gap-2 hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-gray-200 active:scale-95"
+                        className="px-10 py-3 bg-gray-900 text-white rounded-xl font-semibold flex items-center gap-2 hover:bg-gray-800 transition-all disabled:opacity-50 shadow-lg active:scale-95"
                     >
-                        {loading ? (
-                            <span className="flex items-center gap-2">
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Verificando...
-                            </span>
-                        ) : (
+                        {loading ? 'Sincronizando...' : (
                             <>
                                 <Save size={18} />
                                 Finalizar Registro

@@ -11,6 +11,7 @@ import { CalendarPage } from './pages/CalendarPage';
 import { BillingPage } from './pages/BillingPage';
 import { CategoriesPage } from './pages/SystemPages';
 import Clinics from './pages/Clinics';
+import { NewPatient } from './pages/NewPatient';
 
 // UI
 import { PlaceholderPage } from './components/ui/PlaceholderPage';
@@ -30,10 +31,10 @@ function App() {
           <Route path="/facturacion" element={<BillingPage mode="list" />} />
           <Route path="/clinicas" element={<Clinics />} />
           <Route path="/settings" element={<Settings fetchAppointments={fetchAppointments} />} />
+          <Route path="/nuevo-paciente" element={<NewPatient />} />
 
           {/* Rutas con Placeholder reutilizable */}
           <Route path="/agendar" element={<PlaceholderPage title="Agendar Cita" icon={PlusCircle} color="bg-blue-500" />} />
-          <Route path="/nuevo-paciente" element={<PlaceholderPage title="Nuevo Paciente" icon={UserPlus} color="bg-orange-500" />} />
           <Route path="/registrar-gasto" element={<PlaceholderPage title="Registrar Gasto" icon={Wallet} color="bg-red-500" />} />
           <Route path="/papelera" element={<PlaceholderPage title="Papelera" icon={Trash2} color="bg-gray-700" />} />
           <Route path="/categorias" element={<CategoriesPage />} />

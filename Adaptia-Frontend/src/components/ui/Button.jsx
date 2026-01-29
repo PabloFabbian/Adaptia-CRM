@@ -1,23 +1,14 @@
-export const Button = ({ children, variant = 'primary', ...props }) => {
-    // Estilos base: fuente pequeña, bordes redondeados y transición suave
-    const baseStyles = "px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 border cursor-pointer";
+export const Button = ({ children, variant = 'primary', className = '', ...props }) => {
+    const baseStyles = "px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer active:scale-95";
 
     const variants = {
-        // Botón negro de la imagen (+ Nuevo rol)
-        primary: "bg-black text-white border-black hover:bg-gray-800 active:scale-95",
-
-        // Botón blanco con borde gris
-        secondary: "bg-white text-gray-700 border-[#e5e5e3] hover:bg-gray-50 active:scale-95",
-
-        // Botón sin fondo ni borde
-        ghost: "border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+        primary: "bg-gray-900 dark:bg-adaptia-blue text-white border-transparent hover:opacity-90 shadow-lg shadow-adaptia-blue/10",
+        secondary: "bg-white dark:bg-white/5 text-gray-700 dark:text-gray-300 border-[#e5e5e3] dark:border-dark-border hover:bg-gray-50 dark:hover:bg-white/10",
+        ghost: "border-transparent text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"
     };
 
     return (
-        <button
-            className={`${baseStyles} ${variants[variant]}`}
-            {...props}
-        >
+        <button className={`${baseStyles} ${variants[variant]} ${className}`} {...props}>
             {children}
         </button>
     );

@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react';
 import { UserPlus, ArrowLeft, Mail, Phone, CreditCard, MapPin, AlertCircle, ExternalLink, Calendar, Save } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Importante para la propiedad de los datos
+import { useAuth } from '../context/AuthContext';
 
 export const NewPatient = () => {
     const navigate = useNavigate();
-    const { user } = useAuth(); // Obtenemos el psicólogo logueado
+    const { user } = useAuth();
     const errorRef = useRef(null);
 
     const [loading, setLoading] = useState(false);
@@ -16,7 +16,6 @@ export const NewPatient = () => {
         name: '', email: '', phone: '', dni: '', address: '', birthDate: ''
     });
 
-    // Función para llevar la vista al mensaje de error
     const scrollToError = () => {
         setTimeout(() => {
             errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -35,7 +34,6 @@ export const NewPatient = () => {
         setError('');
 
         try {
-            // 1. Verificación de duplicados en la base de datos
             const checkRes = await fetch('http://localhost:3001/api/patients');
             const { data } = await checkRes.json();
 
@@ -52,14 +50,13 @@ export const NewPatient = () => {
                 return;
             }
 
-            // 2. Registro en Neon con el ID del usuario actual
             const response = await fetch('http://localhost:3001/api/patients', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: formData.name,
-                    ownerMemberId: user?.id || 1, // Usa el ID del login o 1 por defecto
-                    history: { ...formData }      // Se guarda como JSONB en el backend
+                    ownerMemberId: user?.id || 1,
+                    history: { ...formData }
                 })
             });
 
@@ -76,41 +73,50 @@ export const NewPatient = () => {
         }
     };
 
+    // Estilo común para los inputs en modo oscuro/claro
+    const inputClass = (isError) => `
+        w-full pl-12 pr-4 py-3 rounded-2xl border outline-none transition-all duration-300
+        ${isError
+            ? 'border-red-400/50 bg-red-500/5 ring-4 ring-red-500/10 text-red-200'
+            : 'border-gray-100 dark:border-dark-border bg-gray-50/50 dark:bg-white/5 text-gray-800 dark:text-gray-100 focus:bg-white dark:focus:bg-dark-surface focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500/50'}
+    `;
+
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8 animate-in fade-in duration-500">
+        <div className="max-w-4xl mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header y Navegación */}
-            <Link to="/pacientes" className="flex items-center gap-2 text-gray-400 hover:text-gray-600 mb-6 text-sm transition-colors group">
+            <Link to="/pacientes" className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 mb-8 text-sm transition-colors group">
                 <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                Volver a la base de datos
+                <span className="font-light tracking-wide">Volver a la base de datos</span>
             </Link>
 
             <header className="mb-10">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="p-3 bg-orange-500 rounded-2xl text-white shadow-xl shadow-orange-100">
-                        <UserPlus className="w-7 h-7" />
+                <div className="flex items-center gap-5 mb-2">
+                    <div className="p-4 bg-orange-500 rounded-[1.5rem] text-white shadow-2xl shadow-orange-500/20">
+                        <UserPlus className="w-7 h-7" strokeWidth={1.5} />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Registro de Paciente</h1>
-                        <p className="text-gray-500 text-sm">Crea una nueva ficha clínica digital</p>
+                        <h1 className="text-4xl font-light text-gray-900 dark:text-white tracking-tight">
+                            Nuevo <span className="font-bold">Paciente</span>
+                        </h1>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm font-light mt-1">Crea una nueva ficha clínica digital encriptada</p>
                     </div>
                 </div>
 
-                {/* ALERTA DE ERROR CON AUTO-SCROLL */}
+                {/* ALERTA DE ERROR */}
                 <div ref={errorRef}>
                     {error && (
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-red-50 border border-red-100 text-red-700 rounded-2xl mt-6 animate-in slide-in-from-top-4">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 rounded-[2rem] mt-8 animate-in zoom-in-95 duration-300 backdrop-blur-md">
                             <div className="flex items-center gap-3">
-                                <AlertCircle size={20} className="text-red-500 shrink-0" />
-                                <span className="text-sm font-semibold">{error}</span>
+                                <AlertCircle size={20} className="shrink-0" />
+                                <span className="text-sm font-medium">{error}</span>
                             </div>
                             {duplicatePatient && (
                                 <button
                                     type="button"
                                     onClick={() => navigate(`/pacientes?open=${duplicatePatient.id}`)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-xl text-xs font-bold hover:bg-red-50 transition-all shadow-sm shrink-0"
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl text-xs font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 shrink-0"
                                 >
-                                    <ExternalLink size={14} />
-                                    Abrir Perfil Existente
+                                    <ExternalLink size={14} /> Abrir Perfil
                                 </button>
                             )}
                         </div>
@@ -118,40 +124,46 @@ export const NewPatient = () => {
                 </div>
             </header>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
                 {/* SECCIÓN 1: DATOS PERSONALES */}
-                <div className="bg-white border border-gray-100 rounded-3xl p-8 shadow-sm">
-                    <h2 className="text-lg font-semibold mb-6 flex items-center gap-2 text-gray-800">
-                        <span className="w-8 h-8 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-sm font-bold">1</span>
+                <div className="bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-[2.5rem] p-10 shadow-sm">
+                    <h2 className="text-sm font-bold mb-8 flex items-center gap-3 text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">
+                        <span className="w-9 h-9 bg-orange-500/10 text-orange-500 rounded-md flex items-center justify-center text-xs pl-1">01</span>
                         Información Personal
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-600 mb-2">Nombre Completo</label>
-                            <input
-                                name="name" required value={formData.name} onChange={handleChange}
-                                className={`w-full px-4 py-3 rounded-xl border outline-none transition-all ${error.includes('registrado') ? 'border-red-300 ring-4 ring-red-50' : 'border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100'}`}
-                                placeholder="Ej. Juan Pérez García"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-2">DNI/NIE</label>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="md:col-span-2 relative">
+                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">Nombre Completo</label>
                             <div className="relative">
-                                <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <UserPlus size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
+                                <input
+                                    name="name" required value={formData.name} onChange={handleChange}
+                                    className={inputClass(error.includes('registrado'))}
+                                    placeholder="Ej. Juan Pérez García"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="relative">
+                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">DNI/NIE</label>
+                            <div className="relative">
+                                <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
                                 <input
                                     name="dni" required value={formData.dni} onChange={handleChange}
-                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100 outline-none transition-all"
+                                    className={inputClass(false)}
                                     placeholder="12345678X"
                                 />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-2">Fecha de Nacimiento</label>
+
+                        <div className="relative">
+                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">Nacimiento</label>
                             <div className="relative">
-                                <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
                                 <input
                                     name="birthDate" type="date" value={formData.birthDate} onChange={handleChange}
-                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-orange-100 outline-none transition-all"
+                                    className={inputClass(false)}
                                 />
                             </div>
                         </div>
@@ -159,42 +171,45 @@ export const NewPatient = () => {
                 </div>
 
                 {/* SECCIÓN 2: CONTACTO */}
-                <div className="bg-white border border-gray-100 rounded-3xl p-8 shadow-sm">
-                    <h2 className="text-lg font-semibold mb-6 flex items-center gap-2 text-gray-800">
-                        <span className="w-8 h-8 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-sm font-bold">2</span>
+                <div className="bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-[2.5rem] p-10 shadow-sm">
+                    <h2 className="text-sm font-bold mb-8 flex items-center gap-3 text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">
+                        <span className="w-9 h-9 bg-adaptia-blue/10 text-adaptia-blue rounded-md flex items-center justify-center text-xs pl-1">02</span>
                         Contacto y Ubicación
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-2">Correo Electrónico</label>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="relative">
+                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">Email</label>
                             <div className="relative">
-                                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
                                 <input
                                     name="email" type="email" value={formData.email} onChange={handleChange}
-                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all"
-                                    placeholder="nombre@ejemplo.com"
+                                    className={inputClass(false)}
+                                    placeholder="correo@paciente.com"
                                 />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-2">Teléfono Móvil</label>
+
+                        <div className="relative">
+                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">Móvil</label>
                             <div className="relative">
-                                <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
                                 <input
                                     name="phone" type="tel" value={formData.phone} onChange={handleChange}
-                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all"
-                                    placeholder="+34 600 000 000"
+                                    className={inputClass(false)}
+                                    placeholder="+34 000 000 000"
                                 />
                             </div>
                         </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-600 mb-2">Dirección Residencial</label>
+
+                        <div className="md:col-span-2 relative">
+                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">Dirección Residencial</label>
                             <div className="relative">
-                                <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
                                 <input
                                     name="address" value={formData.address} onChange={handleChange}
-                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all"
-                                    placeholder="Calle, Número, Ciudad"
+                                    className={inputClass(false)}
+                                    placeholder="Calle, Ciudad, CP"
                                 />
                             </div>
                         </div>
@@ -202,22 +217,22 @@ export const NewPatient = () => {
                 </div>
 
                 {/* ACCIONES FINALES */}
-                <div className="flex items-center justify-end gap-4 pt-4 pb-12">
+                <div className="flex items-center justify-end gap-6 pt-6 pb-20">
                     <button
                         type="button"
                         onClick={() => navigate('/pacientes')}
-                        className="px-6 py-3 rounded-xl font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+                        className="text-sm font-bold text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-white transition-all uppercase tracking-widest"
                     >
-                        Cancelar
+                        Descartar
                     </button>
                     <button
                         disabled={loading}
-                        className="px-10 py-3 bg-gray-900 text-white rounded-xl font-semibold flex items-center gap-2 hover:bg-gray-800 transition-all disabled:opacity-50 shadow-lg active:scale-95"
+                        className="px-12 py-4 bg-gray-900 dark:bg-adaptia-blue text-white rounded-2xl font-bold flex items-center gap-3 hover:opacity-90 transition-all disabled:opacity-50 shadow-xl shadow-adaptia-blue/20 active:scale-95 text-sm uppercase tracking-widest"
                     >
-                        {loading ? 'Sincronizando...' : (
+                        {loading ? 'Procesando...' : (
                             <>
-                                <Save size={18} />
-                                Finalizar Registro
+                                <Save size={18} strokeWidth={2.5} />
+                                Guardar Paciente
                             </>
                         )}
                     </button>

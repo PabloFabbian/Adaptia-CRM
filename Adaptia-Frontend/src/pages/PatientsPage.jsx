@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Users, UserPlus, Search, Filter, ExternalLink, Mail, Phone, ShieldCheck } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner'; // <--- Importamos toast
+import { Users, UserPlus, Search, Filter, ExternalLink, Mail, Phone, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 // Hooks y API
 import { usePatients } from '../hooks/usePatients';
@@ -11,6 +11,7 @@ import { PatientDetailsPanel } from '../components/PatientDetailsPanel';
 import { ClinicalNoteModal } from '../components/ClinicalNoteModal';
 
 export const PatientsPage = () => {
+    const navigate = useNavigate();
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -35,7 +36,7 @@ export const PatientsPage = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     patient_id: selectedPatient.id,
-                    member_id: 1,
+                    member_id: 1, // Esto debería venir de tu AuthContext en producción
                     content: formData.details,
                     title: formData.title,
                     summary: formData.summary,
@@ -48,12 +49,11 @@ export const PatientsPage = () => {
                 throw new Error(errorData.error || "Error al guardar en el servidor");
             }
 
-            // ÉXITO: Ya no hay alert(). El Modal se encarga de mostrar el toast de éxito.
             setIsNoteModalOpen(false);
-
+            // El componente PatientDetailsPanel debería refrescar las notas automáticamente si escucha cambios
         } catch (err) {
             console.error("Error al guardar:", err);
-            toast.error("Error al guardar", { description: err.message }); // Cambiado alert por toast
+            toast.error("Error al guardar", { description: err.message });
         }
     };
 
@@ -63,85 +63,102 @@ export const PatientsPage = () => {
     );
 
     return (
-        <div className="relative min-h-screen bg-gray-50/30">
-            <div className={`max-w-7xl mx-auto px-4 py-8 transition-all duration-500 ease-in-out ${selectedPatient ? 'pr-[420px]' : ''}`}>
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-orange-500 rounded-2xl text-white shadow-lg shadow-orange-100">
-                            <Users className="w-6 h-6" />
+        <div className="relative min-h-screen">
+            {/* CONTENIDO PRINCIPAL: Se desplaza y escala cuando el panel está abierto */}
+            <div className={`max-w-7xl mx-auto px-6 py-10 transition-all duration-700 ease-in-out ${selectedPatient ? 'pr-[420px] scale-[0.97] blur-sm opacity-50 pointer-events-none' : 'scale-100 opacity-100'}`}>
+
+                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+                    <div className="flex items-center gap-5">
+                        <div className="p-4 bg-orange-500 rounded-[1.5rem] text-white shadow-2xl shadow-orange-500/20">
+                            <Users className="w-7 h-7" strokeWidth={1.5} />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Pacientes</h1>
-                            <p className="text-gray-400 text-sm font-light">
-                                <span className="text-gray-900 font-medium">{filteredPatients.length}</span> registros sincronizados
+                            <h1 className="text-4xl font-light dark:text-white tracking-tight">
+                                Base de <span className="font-bold">Pacientes</span>
+                            </h1>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 font-light">
+                                <span className="dark:text-adaptia-mint font-bold">{filteredPatients.length}</span> expedientes clínicos activos
                             </p>
                         </div>
                     </div>
-                    <Link to="/nuevo-paciente" className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-2xl text-sm font-bold hover:bg-gray-800 transition-all shadow-xl active:scale-95">
-                        <UserPlus size={18} /> Nuevo Registro
-                    </Link>
+                    <button
+                        onClick={() => navigate('/nuevo-paciente')}
+                        className="flex items-center justify-center gap-2 bg-gray-900 dark:bg-adaptia-blue text-white px-7 py-4 rounded-2xl text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-all active:scale-95 shadow-xl shadow-adaptia-blue/20"
+                    >
+                        <UserPlus size={18} strokeWidth={2.5} /> Nuevo Registro
+                    </button>
                 </header>
 
-                <div className="flex gap-4 mb-8">
-                    <div className="relative flex-1 group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors" size={20} />
+                <div className="flex gap-4 mb-10 group">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-adaptia-blue transition-colors" size={20} />
                         <input
                             type="text"
-                            placeholder="Buscar por nombre o DNI..."
+                            placeholder="Buscar por nombre, DNI o expediente..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-12 pr-4 py-4 bg-white border border-gray-100 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-orange-50 transition-all shadow-sm"
+                            className="w-full pl-14 pr-6 py-4.5 bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-[2rem] text-sm outline-none focus:ring-8 focus:ring-adaptia-blue/5 transition-all dark:text-white shadow-sm"
                         />
                     </div>
-                    <button className="p-4 bg-white border border-gray-100 rounded-[1.5rem] text-gray-400 hover:text-gray-900 transition-all">
+                    <button className="p-4 bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-2xl text-gray-400 hover:text-adaptia-mint transition-all shadow-sm">
                         <Filter size={20} />
                     </button>
                 </div>
 
-                <div className="bg-white border border-gray-100 rounded-[2.5rem] shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-[2.5rem] shadow-2xl overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left min-w-[800px]">
-                            <thead className="bg-gray-50/50 border-b border-gray-100">
-                                <tr className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                    <th className="px-8 py-5">Identificación</th>
-                                    <th className="px-8 py-5">Contacto</th>
-                                    <th className="px-8 py-5">Propiedad</th>
-                                    <th className="px-8 py-5 text-right">Acciones</th>
+                        <table className="w-full text-left min-w-[800px] border-collapse">
+                            <thead className="bg-gray-50/50 dark:bg-white/5 text-gray-400 dark:text-gray-500">
+                                <tr className="text-[10px] font-black uppercase tracking-[0.2em]">
+                                    <th className="px-10 py-6">Identidad</th>
+                                    <th className="px-10 py-6">Contacto</th>
+                                    <th className="px-10 py-6">Estatus / Propiedad</th>
+                                    <th className="px-10 py-6 text-right">Ficha</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody className="divide-y divide-gray-50 dark:divide-dark-border">
                                 {loading ? (
-                                    <tr><td colSpan="4" className="px-8 py-32 text-center text-gray-400 animate-pulse">Sincronizando...</td></tr>
+                                    <tr>
+                                        <td colSpan="4" className="px-10 py-32 text-center">
+                                            <div className="flex flex-col items-center gap-4">
+                                                <div className="w-12 h-12 border-4 border-adaptia-blue/20 border-t-adaptia-blue rounded-full animate-spin" />
+                                                <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Sincronizando registros...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 ) : filteredPatients.map((patient) => (
                                     <tr
                                         key={patient.id}
                                         onClick={() => setSelectedPatient(patient)}
-                                        className={`hover:bg-orange-50/30 transition-all group cursor-pointer ${selectedPatient?.id === patient.id ? 'bg-orange-50/50' : ''}`}
+                                        className={`group hover:bg-gray-50/80 dark:hover:bg-white/[0.02] transition-all cursor-pointer ${selectedPatient?.id === patient.id ? 'bg-orange-50/50 dark:bg-adaptia-blue/5' : ''}`}
                                     >
-                                        <td className="px-8 py-5">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-gray-100 text-gray-600 rounded-2xl flex items-center justify-center font-bold text-sm border border-gray-200 group-hover:border-orange-200">
+                                        <td className="px-10 py-6">
+                                            <div className="flex items-center gap-5">
+                                                <div className="w-12 h-12 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center font-bold text-sm border border-orange-500/10 group-hover:scale-110 transition-transform">
                                                     {patient.name.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-gray-900 leading-tight">{patient.name}</p>
-                                                    <p className="text-[11px] text-gray-400 font-mono mt-1 uppercase">ID-{patient.history?.dni || 'SN'}</p>
+                                                    <p className="font-bold text-gray-900 dark:text-gray-100 leading-tight group-hover:text-adaptia-blue transition-colors">{patient.name}</p>
+                                                    <p className="text-[10px] text-gray-400 font-mono mt-1 tracking-tighter">ID-{patient.history?.dni || 'P-0' + patient.id}</p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-5">
-                                            <div className="text-xs text-gray-600 space-y-1">
-                                                <p className="flex items-center gap-2"><Mail size={12} className="text-gray-300" /> {patient.history?.email || '—'}</p>
-                                                <p className="flex items-center gap-2"><Phone size={12} className="text-gray-300" /> {patient.history?.phone || '—'}</p>
+                                        <td className="px-10 py-6 text-gray-500 dark:text-gray-400">
+                                            <div className="text-[11px] space-y-1.5 font-medium">
+                                                <p className="flex items-center gap-2 group-hover:text-gray-700 dark:group-hover:text-gray-200"><Mail size={13} className="text-gray-300 dark:text-gray-600" /> {patient.history?.email || '—'}</p>
+                                                <p className="flex items-center gap-2 group-hover:text-gray-700 dark:group-hover:text-gray-200"><Phone size={13} className="text-gray-300 dark:text-gray-600" /> {patient.history?.phone || '—'}</p>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-5">
-                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold uppercase tracking-wider border border-blue-100">
-                                                <ShieldCheck size={12} /> {patient.owner_name || 'Luis David'}
+                                        <td className="px-10 py-6">
+                                            <span className="inline-flex items-center gap-2 px-3 py-1 bg-adaptia-blue/5 text-adaptia-blue dark:text-adaptia-mint rounded-full text-[9px] font-black uppercase tracking-widest border border-adaptia-blue/10">
+                                                <ShieldCheck size={12} strokeWidth={2.5} /> {patient.owner_name || 'Mi Registro'}
                                             </span>
                                         </td>
-                                        <td className="px-8 py-5 text-right">
-                                            <button className="p-2 text-gray-300 group-hover:text-orange-500 transition-colors"><ExternalLink size={18} /></button>
+                                        <td className="px-10 py-6 text-right">
+                                            <div className="flex justify-end items-center gap-2 text-gray-300 dark:text-gray-700 group-hover:text-adaptia-mint transition-all">
+                                                <span className="text-[9px] font-black uppercase tracking-[0.15em] opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all">Detalles</span>
+                                                <ChevronRight size={18} />
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -151,12 +168,14 @@ export const PatientsPage = () => {
                 </div>
             </div>
 
+            {/* PANEL LATERAL DE DETALLES */}
             <PatientDetailsPanel
                 patient={selectedPatient}
                 onClose={closePanel}
                 onOpenNote={() => setIsNoteModalOpen(true)}
             />
 
+            {/* MODAL PARA NUEVAS NOTAS */}
             <ClinicalNoteModal
                 isOpen={isNoteModalOpen}
                 patientName={selectedPatient?.name}

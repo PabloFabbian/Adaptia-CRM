@@ -18,8 +18,6 @@ export const Login = () => {
         setError('');
 
         try {
-            // Aquí conectarás con tu endpoint de login en el futuro
-            // Por ahora, simularemos un login exitoso con un usuario de Neon
             const response = await fetch('http://localhost:3001/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -29,7 +27,7 @@ export const Login = () => {
             const resData = await response.json();
 
             if (response.ok) {
-                login(resData.user); // Guardamos el usuario (id, nombre, etc.)
+                login(resData.user);
                 navigate('/pacientes');
             } else {
                 setError(resData.message || 'Credenciales incorrectas');
@@ -42,50 +40,50 @@ export const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50/50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#101828] px-4 transition-colors duration-500">
             <div className="max-w-md w-full">
                 <div className="text-center mb-10">
-                    <div className="inline-flex p-4 bg-gray-900 rounded-3xl text-white shadow-2xl mb-4">
-                        <LogIn size={32} />
+                    <div className="inline-flex p-5 bg-[#50e3c2] rounded-[2rem] text-gray-900 shadow-2xl shadow-[#50e3c2]/20 mb-6">
+                        <LogIn size={32} strokeWidth={2.5} />
                     </div>
-                    <h1 className="text-3xl font-bold text-gray-900">Bienvenido a Adaptia</h1>
-                    <p className="text-gray-500 mt-2">Ingresa a tu panel de gestión clínica</p>
+                    <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">Adaptia</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Panel de gestión clínica</p>
                 </div>
 
-                <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+                <div className="bg-white dark:bg-[#161f31] p-10 rounded-[3rem] border border-gray-100 dark:border-gray-800 shadow-xl dark:shadow-2xl">
                     {error && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl flex items-center gap-3 animate-in fade-in zoom-in duration-300">
-                            <AlertCircle size={20} />
-                            <span className="text-sm font-semibold">{error}</span>
+                        <div className="mb-8 p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 text-red-600 dark:text-red-400 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <AlertCircle size={18} />
+                            <span className="text-xs font-bold uppercase tracking-wide">{error}</span>
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2 ml-1">Email profesional</label>
-                            <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <label className="block text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.15em] mb-2 ml-2">Email profesional</label>
+                            <div className="relative group">
+                                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#50e3c2] transition-colors" size={20} />
                                 <input
                                     type="email"
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border-transparent border focus:border-gray-900 focus:bg-white rounded-2xl outline-none transition-all"
+                                    className="w-full pl-14 pr-6 py-5 bg-gray-50 dark:bg-[#101828] border-2 border-transparent focus:border-[#50e3c2]/30 dark:focus:border-[#50e3c2]/50 text-gray-900 dark:text-white rounded-[1.5rem] outline-none transition-all placeholder:text-gray-300 dark:placeholder:text-gray-700"
                                     placeholder="correo@ejemplo.com"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2 ml-1">Contraseña</label>
-                            <div className="relative">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <label className="block text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.15em] mb-2 ml-2">Contraseña</label>
+                            <div className="relative group">
+                                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#50e3c2] transition-colors" size={20} />
                                 <input
                                     type="password"
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border-transparent border focus:border-gray-900 focus:bg-white rounded-2xl outline-none transition-all"
+                                    className="w-full pl-14 pr-6 py-5 bg-gray-50 dark:bg-[#101828] border-2 border-transparent focus:border-[#50e3c2]/30 dark:focus:border-[#50e3c2]/50 text-gray-900 dark:text-white rounded-[1.5rem] outline-none transition-all placeholder:text-gray-300 dark:placeholder:text-gray-700"
                                     placeholder="••••••••"
                                 />
                             </div>
@@ -93,20 +91,29 @@ export const Login = () => {
 
                         <button
                             disabled={loading}
-                            className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-lg hover:bg-gray-800 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full py-5 bg-gray-900 dark:bg-[#50e3c2] text-white dark:text-gray-900 rounded-[1.5rem] font-black text-sm uppercase tracking-[0.1em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 overflow-hidden relative"
                         >
                             {loading ? (
                                 <Loader2 className="animate-spin" size={20} />
                             ) : (
-                                'Iniciar Sesión'
+                                <>
+                                    <span>Entrar al Sistema</span>
+                                </>
                             )}
                         </button>
                     </form>
                 </div>
 
-                <p className="text-center mt-8 text-sm text-gray-400">
-                    &copy; 2026 Adaptia Clinic. Todos los derechos reservados.
-                </p>
+                <div className="text-center mt-10 space-y-2">
+                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-[0.2em]">
+                        &copy; 2026 Adaptia Clinic &bull; Secure Terminal
+                    </p>
+                    <div className="flex justify-center gap-4">
+                        <div className="w-1 h-1 rounded-full bg-[#50e3c2]/30" />
+                        <div className="w-1 h-1 rounded-full bg-[#50e3c2]/30" />
+                        <div className="w-1 h-1 rounded-full bg-[#50e3c2]/30" />
+                    </div>
+                </div>
             </div>
         </div>
     );

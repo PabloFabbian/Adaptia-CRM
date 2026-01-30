@@ -1,5 +1,5 @@
 import { Shield, Users } from 'lucide-react';
-import { PermissionToggle } from '../features/settings/PermissionToggle';
+import { PermissionToggle } from '../features/clinics/components/PermissionToggle';
 
 const Settings = ({ fetchAppointments }) => (
     <div className="max-w-6xl mx-auto px-4 py-8">

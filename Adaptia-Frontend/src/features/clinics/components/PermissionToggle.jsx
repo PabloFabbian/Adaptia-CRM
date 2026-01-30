@@ -1,4 +1,4 @@
-import { useClinics } from '../../hooks/useClinics';
+import { useClinics } from '../../../hooks/useClinics';
 import { toast } from 'sonner';
 
 export const PermissionToggle = ({ memberId, resourceType, label, initialValue }) => {

@@ -1,22 +1,25 @@
 import { useState } from 'react';
-import { Users, UserPlus, Search, Filter, ExternalLink, Mail, Phone, ShieldCheck, ChevronRight } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Users, UserPlus, Search, Filter, Mail, Phone, ShieldCheck, ChevronRight } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-// Hooks y API
+// Hooks y Contexto
 import { usePatients } from '../hooks/usePatients';
+import { useAuth } from '../context/AuthContext'; // Importamos el contexto de autenticación
 
 // Componentes
-import { PatientDetailsPanel } from '../components/PatientDetailsPanel';
-import { ClinicalNoteModal } from '../components/ClinicalNoteModal';
+import { PatientDetailsPanel } from '../features/patients/PatientDetailsPanel';
+import { ClinicalNoteModal } from '../features/patients/ClinicalNoteModal';
 
 export const PatientsPage = () => {
     const navigate = useNavigate();
+    const { user } = useAuth(); // Obtenemos el usuario logueado
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [, setSearchParams] = useSearchParams();
 
+    // Hook personalizado para traer pacientes (pasa setSelectedPatient para manejar la carga inicial si hay params)
     const { patients, loading } = usePatients(setSelectedPatient);
 
     const closePanel = () => {
@@ -31,12 +34,13 @@ export const PatientsPage = () => {
                 return;
             }
 
+            // Usamos la URL del backend y el ID del usuario real
             const response = await fetch('http://localhost:3001/api/clinical-notes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     patient_id: selectedPatient.id,
-                    member_id: 1, // Esto debería venir de tu AuthContext en producción
+                    member_id: user?.id || 1, // ID dinámico desde AuthContext
                     content: formData.details,
                     title: formData.title,
                     summary: formData.summary,
@@ -44,19 +48,24 @@ export const PatientsPage = () => {
                 })
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Error al guardar en el servidor");
+                throw new Error(result.error || "Error al guardar en el servidor");
             }
 
+            toast.success("Nota guardada", { description: "El historial clínico ha sido actualizado." });
             setIsNoteModalOpen(false);
-            // El componente PatientDetailsPanel debería refrescar las notas automáticamente si escucha cambios
+
+            // Refrescamos los datos del paciente seleccionado para ver la nueva nota
+            // Esto asume que tienes una función de refresh o que el panel escucha cambios
         } catch (err) {
             console.error("Error al guardar:", err);
             toast.error("Error al guardar", { description: err.message });
         }
     };
 
+    // Filtro de búsqueda
     const filteredPatients = patients.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.history?.dni && p.history.dni.includes(searchTerm))
@@ -64,8 +73,11 @@ export const PatientsPage = () => {
 
     return (
         <div className="relative min-h-screen">
-            {/* CONTENIDO PRINCIPAL: Se desplaza y escala cuando el panel está abierto */}
-            <div className={`max-w-7xl mx-auto px-6 py-10 transition-all duration-700 ease-in-out ${selectedPatient ? 'pr-[420px] scale-[0.97] blur-sm opacity-50 pointer-events-none' : 'scale-100 opacity-100'}`}>
+            {/* CONTENIDO PRINCIPAL */}
+            <div className={`max-w-7xl mx-auto px-6 py-10 transition-all duration-700 ease-in-out ${selectedPatient
+                ? 'pr-[420px] scale-[0.97] blur-sm opacity-50 pointer-events-none'
+                : 'scale-100 opacity-100'
+                }`}>
 
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                     <div className="flex items-center gap-5">
@@ -89,6 +101,7 @@ export const PatientsPage = () => {
                     </button>
                 </header>
 
+                {/* BUSCADOR */}
                 <div className="flex gap-4 mb-10 group">
                     <div className="relative flex-1">
                         <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-adaptia-blue transition-colors" size={20} />
@@ -105,6 +118,7 @@ export const PatientsPage = () => {
                     </button>
                 </div>
 
+                {/* TABLA DE PACIENTES */}
                 <div className="bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-[2.5rem] shadow-2xl overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left min-w-[800px] border-collapse">
@@ -130,7 +144,8 @@ export const PatientsPage = () => {
                                     <tr
                                         key={patient.id}
                                         onClick={() => setSelectedPatient(patient)}
-                                        className={`group hover:bg-gray-50/80 dark:hover:bg-white/[0.02] transition-all cursor-pointer ${selectedPatient?.id === patient.id ? 'bg-orange-50/50 dark:bg-adaptia-blue/5' : ''}`}
+                                        className={`group hover:bg-gray-50/80 dark:hover:bg-white/[0.02] transition-all cursor-pointer ${selectedPatient?.id === patient.id ? 'bg-orange-50/50 dark:bg-adaptia-blue/5' : ''
+                                            }`}
                                     >
                                         <td className="px-10 py-6">
                                             <div className="flex items-center gap-5">
@@ -138,15 +153,23 @@ export const PatientsPage = () => {
                                                     {patient.name.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-gray-900 dark:text-gray-100 leading-tight group-hover:text-adaptia-blue transition-colors">{patient.name}</p>
-                                                    <p className="text-[10px] text-gray-400 font-mono mt-1 tracking-tighter">ID-{patient.history?.dni || 'P-0' + patient.id}</p>
+                                                    <p className="font-bold text-gray-900 dark:text-gray-100 leading-tight group-hover:text-adaptia-blue transition-colors">
+                                                        {patient.name}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-400 font-mono mt-1 tracking-tighter">
+                                                        ID-{patient.history?.dni || 'P-0' + patient.id}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-10 py-6 text-gray-500 dark:text-gray-400">
                                             <div className="text-[11px] space-y-1.5 font-medium">
-                                                <p className="flex items-center gap-2 group-hover:text-gray-700 dark:group-hover:text-gray-200"><Mail size={13} className="text-gray-300 dark:text-gray-600" /> {patient.history?.email || '—'}</p>
-                                                <p className="flex items-center gap-2 group-hover:text-gray-700 dark:group-hover:text-gray-200"><Phone size={13} className="text-gray-300 dark:text-gray-600" /> {patient.history?.phone || '—'}</p>
+                                                <p className="flex items-center gap-2 group-hover:text-gray-700 dark:group-hover:text-gray-200">
+                                                    <Mail size={13} className="text-gray-300 dark:text-gray-600" /> {patient.history?.email || '—'}
+                                                </p>
+                                                <p className="flex items-center gap-2 group-hover:text-gray-700 dark:group-hover:text-gray-200">
+                                                    <Phone size={13} className="text-gray-300 dark:text-gray-600" /> {patient.history?.phone || '—'}
+                                                </p>
                                             </div>
                                         </td>
                                         <td className="px-10 py-6">

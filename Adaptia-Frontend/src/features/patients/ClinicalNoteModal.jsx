@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion'; // Animaciones
-import { toast } from 'sonner'; // Notificaciones
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { X, Type, Activity, Loader2, ClipboardList, Stethoscope, Pill, Beaker, Users, AlertCircle, Check } from 'lucide-react';
-import { getClinicalSummary } from '../api/gemini';
+import { getClinicalSummary } from '../../api/gemini';
 
 const CATEGORIES = [
     { id: 'Evolución', label: 'Evolución', color: 'bg-blue-50 text-blue-600 ring-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-800/50', icon: ClipboardList },

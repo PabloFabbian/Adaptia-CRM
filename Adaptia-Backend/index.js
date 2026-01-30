@@ -14,30 +14,25 @@ app.use(express.json());
 
 const PORT = 3001;
 
-// --- 1. CONFIGURACIÓN DE POSTGRESQL ---
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
-// Middleware para inyectar el pool
 app.use((req, res, next) => {
     req.pool = pool;
     next();
 });
 
-// --- 2. INICIALIZACIÓN DE TABLAS ---
 pool.query(createDatabaseSchema)
     .then(() => console.log("✨ Tablas sincronizadas en Neon"))
     .catch(err => console.error("❌ Error DB:", err));
 
-// --- 3. ENDPOINTS DE AUTENTICACIÓN ---
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const query = 'SELECT id, name, email, password_hash FROM users WHERE email = $1';
         const { rows } = await pool.query(query, [email]);
-
         if (rows.length > 0) {
             const user = rows[0];
             if (user.password_hash === password) {
@@ -52,12 +47,10 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// --- 4. RUTAS MODULARES ---
 app.use('/api/patients', patientRouter);
 
-// --- 5. ENDPOINTS DE NOTAS Y CITAS (Directos en Index) ---
+// --- ENDPOINTS DE NOTAS Y PDF ---
 
-// OBTENER NOTAS DE UN PACIENTE
 app.get('/api/patients/:id/notes', async (req, res) => {
     const { id } = req.params;
     try {
@@ -76,11 +69,31 @@ app.get('/api/patients/:id/notes', async (req, res) => {
     }
 });
 
-// CREAR NOTA CLÍNICA
+// NUEVO: ENDPOINT PARA EXPORTAR PDF (Combina paciente y notas)
+app.get('/api/patients/:id/export-pdf', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const patientRes = await req.pool.query('SELECT id, name, email, phone, history FROM patients WHERE id = $1', [id]);
+        if (patientRes.rows.length === 0) return res.status(404).json({ error: "Paciente no encontrado" });
+
+        const notesRes = await req.pool.query(
+            'SELECT title, content, summary, category, created_at FROM clinical_notes WHERE patient_id = $1 ORDER BY created_at DESC',
+            [id]
+        );
+
+        res.json({
+            patient: patientRes.rows[0],
+            notes: notesRes.rows
+        });
+    } catch (err) {
+        console.error("❌ Error en export-pdf:", err.message);
+        res.status(500).json({ error: "Error al recopilar datos para PDF" });
+    }
+});
+
 app.post('/api/clinical-notes', async (req, res) => {
     const { patient_id, member_id, content, title, summary, category } = req.body;
     if (!patient_id || !content) return res.status(400).json({ error: "Datos incompletos" });
-
     try {
         const query = `
             INSERT INTO clinical_notes (patient_id, member_id, content, title, summary, category, created_at)
@@ -96,7 +109,6 @@ app.post('/api/clinical-notes', async (req, res) => {
     }
 });
 
-// CITAS
 app.get(['/api/appointments', '/api/appointments/all'], async (req, res) => {
     try {
         const viewerMemberId = 1;
@@ -107,7 +119,6 @@ app.get(['/api/appointments', '/api/appointments/all'], async (req, res) => {
         } catch (e) {
             filter = { query: '1=1', params: [] };
         }
-
         const query = `
             SELECT a.id, a.date, a.status, a.owner_member_id, p.name as patient_name 
             FROM appointments a

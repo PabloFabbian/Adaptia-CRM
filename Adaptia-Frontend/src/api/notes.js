@@ -1,19 +1,13 @@
 import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-/**
- * Obtiene los datos de un paciente específico por ID
- */
 export const getPatientById = async (patientId) => {
     try {
         const response = await fetch(`${API_URL}/patients/${patientId}`);
         if (!response.ok) throw new Error('Error al obtener el paciente');
         const result = await response.json();
-
-        // Retornamos siempre un objeto con la propiedad 'data' para que coincida 
-        // con la desestructuración que haces en el useEffect: { data: { ... } }
         return result.data ? result : { data: result };
     } catch (error) {
         console.error("❌ Error en getPatientById:", error);
@@ -21,25 +15,13 @@ export const getPatientById = async (patientId) => {
     }
 };
 
-/**
- * Obtiene todas las notas de un paciente
- * Maneja tanto respuestas tipo { data: [] } como arrays directos []
- */
 export const getPatientNotes = async (patientId) => {
     try {
         const response = await fetch(`${API_URL}/patients/${patientId}/notes`);
         if (!response.ok) throw new Error('Error al obtener notas');
         const result = await response.json();
-
-        // Si el backend devuelve el array envuelto en .data, lo extraemos
-        if (result && result.data && Array.isArray(result.data)) {
-            return result.data;
-        }
-        // Si el backend devuelve el array directamente
-        if (Array.isArray(result)) {
-            return result;
-        }
-
+        if (result && result.data && Array.isArray(result.data)) return result.data;
+        if (Array.isArray(result)) return result;
         return [];
     } catch (error) {
         console.error("❌ Error en getPatientNotes:", error);
@@ -47,9 +29,6 @@ export const getPatientNotes = async (patientId) => {
     }
 };
 
-/**
- * Actualiza la información del paciente (incluyendo el objeto history)
- */
 export const updatePatient = async (patientId, patientData) => {
     try {
         const response = await fetch(`${API_URL}/patients/${patientId}`, {
@@ -57,7 +36,6 @@ export const updatePatient = async (patientId, patientData) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(patientData),
         });
-
         if (!response.ok) throw new Error('Error al actualizar el paciente');
         return await response.json();
     } catch (error) {
@@ -66,9 +44,6 @@ export const updatePatient = async (patientId, patientData) => {
     }
 };
 
-/**
- * Guarda una nueva nota clínica
- */
 export const saveClinicalNote = async (patientId, noteData) => {
     try {
         const response = await fetch(`${API_URL}/clinical-notes`, {
@@ -83,7 +58,6 @@ export const saveClinicalNote = async (patientId, noteData) => {
                 summary: noteData.summary
             }),
         });
-
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Error al guardar la nota');
@@ -95,9 +69,6 @@ export const saveClinicalNote = async (patientId, noteData) => {
     }
 };
 
-/**
- * Genera el PDF en el cliente usando jsPDF con los datos del backend
- */
 export const exportHistoryToPDF = async (patientId, patientName) => {
     try {
         const res = await fetch(`${API_URL}/patients/${patientId}/export-pdf`);
@@ -105,14 +76,15 @@ export const exportHistoryToPDF = async (patientId, patientName) => {
         const { patient, notes } = await res.json();
 
         const doc = new jsPDF();
-        const primaryColor = [249, 115, 22]; // Naranja institucional
+        const primaryColor = [249, 115, 22];
+        const accentColor = [13, 148, 136];
 
-        // Encabezado del PDF
+        // --- Encabezado ---
         doc.setFontSize(22);
         doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.text("HISTORIAL CLÍNICO", 14, 20);
 
-        // Información del Paciente
+        // --- Datos del Paciente ---
         doc.setFontSize(10);
         doc.setTextColor(50);
         doc.setFont(undefined, 'bold');
@@ -120,31 +92,71 @@ export const exportHistoryToPDF = async (patientId, patientName) => {
         doc.setFont(undefined, 'normal');
         doc.text(`Email: ${patient.email || 'N/A'} | Tel: ${patient.phone || 'N/A'}`, 14, 35);
 
-        // Intentamos sacar el DNI del history si no está en la raíz
         const dni = patient.dni || patient.history?.dni || 'N/A';
         doc.text(`DNI: ${dni}`, 14, 40);
 
         doc.setDrawColor(230);
         doc.line(14, 45, 196, 45);
 
-        // Tabla de notas
-        const tableColumn = ["Fecha", "Categoría", "Detalles", "Resumen IA"];
+        // --- Perfil Psicológico ---
+        const history = patient.history || {};
+        let currentY = 52;
+
+        if (history.motivo_consulta || history.antecedentes || history.medicacion) {
+            // Calculamos cuánto espacio ocupará el motivo para que el fondo sea dinámico
+            const motivoText = doc.splitTextToSize(history.motivo_consulta || "No registrado", 140);
+            const blockHeight = 30 + (motivoText.length * 5); // Altura dinámica
+
+            doc.setFillColor(248, 250, 252);
+            doc.rect(14, currentY, 182, blockHeight, 'F');
+
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+            doc.text("ANTECEDENTES Y PERFIL DE INGRESO", 18, currentY + 8);
+
+            doc.setFontSize(9);
+            doc.setTextColor(80);
+
+            doc.setFont(undefined, 'bold');
+            doc.text("Motivo:", 18, currentY + 16);
+            doc.setFont(undefined, 'normal');
+            doc.text(motivoText, 35, currentY + 16);
+
+            doc.setFont(undefined, 'bold');
+            doc.text("Medicación:", 18, currentY + 16 + (motivoText.length * 5) + 2);
+            doc.setFont(undefined, 'normal');
+            doc.text(history.medicacion || "Ninguna", 42, currentY + 16 + (motivoText.length * 5) + 2);
+
+            currentY += blockHeight + 10;
+        }
+
+        // --- Tabla de Notas (CORREGIDA PARA MOSTRAR TODO EL TEXTO) ---
+        const tableColumn = ["Fecha", "Categoría", "Detalles de Sesión", "Resumen IA"];
         const tableRows = (notes || []).map(note => [
             new Date(note.created_at).toLocaleDateString(),
             note.category || 'Evolución',
-            `${note.title || 'Sin título'}\n${(note.content || "").substring(0, 120)}...`,
-            note.summary || 'Sin resumen'
+            // ELIMINAMOS EL SUBSTRING Y USAMOS EL CONTENIDO COMPLETO
+            `${note.title || 'Sesión'}\n\n${note.content || note.details || ""}`,
+            note.summary || 'N/A'
         ]);
 
-        doc.autoTable({
-            startY: 50,
+        autoTable(doc, {
+            startY: currentY,
             head: [tableColumn],
             body: tableRows,
             headStyles: { fillColor: primaryColor },
-            styles: { fontSize: 8, cellPadding: 4 },
+            alternateRowStyles: { fillColor: [250, 250, 250] },
+            styles: {
+                fontSize: 8,
+                cellPadding: 4,
+                overflow: 'linebreak', // Esto permite que el texto baje de línea en vez de cortarse
+                valign: 'top'
+            },
             columnStyles: {
-                2: { cellWidth: 70 },
-                3: { cellWidth: 50 }
+                0: { cellWidth: 20 },
+                1: { cellWidth: 25 },
+                2: { cellWidth: 85 }, // Espacio generoso para los detalles
+                3: { cellWidth: 50 }  // Espacio para el resumen
             }
         });
 

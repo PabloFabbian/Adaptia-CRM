@@ -4,7 +4,7 @@ import {
     ChevronDown, ChevronUp, Pill, Brain, Save, Loader2
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { getPatientNotes, getPatientById, updatePatient } from '../api/notes';
+import { getPatientNotes, getPatientById, updatePatient, exportHistoryToPDF } from '../api/notes';
 
 // --- SUB-COMPONENTE PARA TEXTOS LARGOS ---
 const ExpandableContent = ({ text }) => {
@@ -17,7 +17,7 @@ const ExpandableContent = ({ text }) => {
             <div className={`relative transition-all duration-500 ease-in-out ${isExpanded ? 'max-h-[2000px]' : 'max-h-24 overflow-hidden'}`}>
                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm whitespace-pre-wrap">{text}</p>
                 {!isExpanded && isLongText && (
-                    <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-white dark:from-[#1a1f2e] via-white/80 dark:via-[#1a1f2e]/80 to-transparent" />
+                    <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-t from-white dark:from-[#1a1f2e] via-white/80 dark:via-[#1a1f2e]/80 to-transparent" />
                 )}
             </div>
             {isLongText && (
@@ -48,6 +48,7 @@ export const PatientHistoryPage = () => {
         medicacion: ''
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     // Función de ajuste de altura real
     const adjustHeight = (ref) => {
@@ -57,7 +58,7 @@ export const PatientHistoryPage = () => {
         }
     };
 
-    // Ajustar alturas cuando el perfil cambie (carga inicial o edición)
+    // Ajustar alturas cuando el perfil cambie
     useEffect(() => {
         adjustHeight(motivoRef);
         adjustHeight(antecedentesRef);
@@ -112,6 +113,15 @@ export const PatientHistoryPage = () => {
         }
     };
 
+    const handleExportPDF = async () => {
+        setIsExporting(true);
+        try {
+            await exportHistoryToPDF(id, patientData?.name || 'Paciente');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const filteredNotes = notes.filter(n => {
         const contentToSearch = (n.content || n.details || "").toLowerCase();
         const titleToSearch = (n.title || "").toLowerCase();
@@ -130,7 +140,7 @@ export const PatientHistoryPage = () => {
     return (
         <div className="max-w-5xl mx-auto space-y-8 p-4 bg-transparent transition-colors duration-300">
 
-            {/* --- SECCIÓN: PERFIL PSICOLÓGICO EDITABLE (Marcos de Crecimiento Natural) --- */}
+            {/* --- SECCIÓN: PERFIL PSICOLÓGICO EDITABLE --- */}
             <div className="bg-gray-50 border-gray-200 text-gray-900 dark:bg-slate-900 dark:border-slate-800 dark:text-white border rounded-[2.5rem] p-8 shadow-sm dark:shadow-2xl transition-all duration-300">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
@@ -143,14 +153,25 @@ export const PatientHistoryPage = () => {
                         </div>
                     </div>
 
-                    <button
-                        onClick={handleSaveProfile}
-                        disabled={isSaving}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-xs font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50"
-                    >
-                        {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                        {isSaving ? 'Guardando...' : 'Guardar Perfil'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleExportPDF}
+                            disabled={isExporting || loading}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-slate-700 rounded-full text-xs font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-all shadow-sm disabled:opacity-50"
+                        >
+                            {isExporting ? <Loader2 size={14} className="animate-spin text-orange-500" /> : <FileText size={14} className="text-orange-500" />}
+                            {isExporting ? 'Generando...' : 'Exportar PDF'}
+                        </button>
+
+                        <button
+                            onClick={handleSaveProfile}
+                            disabled={isSaving}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-xs font-bold transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50"
+                        >
+                            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                            {isSaving ? 'Guardando...' : 'Guardar Perfil'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start text-start">

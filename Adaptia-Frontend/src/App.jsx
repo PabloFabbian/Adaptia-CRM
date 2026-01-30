@@ -14,7 +14,7 @@ import { CalendarPage } from './pages/CalendarPage';
 import { BillingPage } from './pages/BillingPage';
 import { CategoriesPage } from './pages/SystemPages';
 import Clinics from './pages/Clinics';
-import { NewPatient } from './pages/NewPatient';
+import { NewPatient } from './pages/NewPatient'; // Este componente ahora maneja Crear y Editar
 import { Login } from './pages/Login';
 
 // --- UI & ICONS ---
@@ -69,11 +69,15 @@ function App() {
             <Route path="pacientes">
               <Route index element={<PatientsPage />} />
               <Route path=":id/historial" element={<PatientHistoryPage />} />
-              {/* Ruta corregida para que coincida con la navegación del Panel */}
+
+              {/* Esta ruta permite editar usando el ID */}
               <Route path="editar/:id" element={<NewPatient />} />
+
+              {/* Ruta interna para crear (opcional, si prefieres /pacientes/nuevo) */}
+              <Route path="nuevo" element={<NewPatient />} />
             </Route>
 
-            {/* Crear nuevo paciente (fuera del grupo /pacientes para mantener url limpia) */}
+            {/* ACCESO DIRECTO: Crear nuevo paciente */}
             <Route path="nuevo-paciente" element={<NewPatient />} />
 
             {/* GESTIÓN OPERATIVA */}
@@ -94,10 +98,8 @@ function App() {
             <Route path="registrar-gasto" element={<PlaceholderPage title="Registrar Gasto" icon={Wallet} color="bg-red-500" />} />
             <Route path="papelera" element={<PlaceholderPage title="Papelera" icon={Trash2} color="bg-gray-700" />} />
 
-            {/* SEGURIDAD */}
+            {/* SEGURIDAD & FALLBACK */}
             <Route path="login" element={<Navigate to="/" replace />} />
-
-            {/* Fallback para rutas no encontradas dentro del layout */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         )}

@@ -2,7 +2,7 @@ import express from 'express';
 import { getResourceFilter } from '../auth/permissions.js';
 const router = express.Router();
 
-// 1. LISTAR PACIENTES (Incluyendo nuevos campos)
+// 1. LISTAR PACIENTES
 router.get('/', async (req, res) => {
     try {
         const viewerMemberId = 1;
@@ -10,7 +10,8 @@ router.get('/', async (req, res) => {
         const filter = await getResourceFilter(req.pool, viewerMemberId, clinicId, 'patients');
 
         const query = `
-            SELECT id, name, email, phone, dni, address, birth_date, gender, insurance_name, insurance_number, history, owner_member_id
+            SELECT id, name, email, phone, dni, address, birth_date, gender, 
+                   insurance_name, insurance_number, history, owner_member_id
             FROM patients
             WHERE ${filter.query}
             ORDER BY name ASC
@@ -23,24 +24,30 @@ router.get('/', async (req, res) => {
     }
 });
 
-// 2. OBTENER UN PACIENTE POR ID (Precarga completa para edición)
+// 2. OBTENER UN PACIENTE POR ID (Corregido el error del pool)
 router.get('/:id', async (req, res) => {
     const { id } = req.params;
     try {
+        // CORRECCIÓN: Usamos req.pool para ser consistentes con el middleware
         const query = `SELECT * FROM patients WHERE id = $1`;
         const { rows } = await req.pool.query(query, [id]);
 
         if (rows.length === 0) {
             return res.status(404).json({ error: "Paciente no encontrado" });
         }
-        res.json({ data: rows[0] });
+
+        // Aseguramos que history siempre sea un objeto para evitar errores en el front
+        const patient = rows[0];
+        if (!patient.history) patient.history = {};
+
+        res.json({ data: patient });
     } catch (error) {
         console.error("❌ Error al obtener el paciente:", error);
         res.status(500).json({ error: "Error interno del servidor" });
     }
 });
 
-// 3. REGISTRO DE NUEVO PACIENTE (INSERT con campos de Neon)
+// 3. REGISTRO DE NUEVO PACIENTE
 router.post('/', async (req, res) => {
     try {
         const {
@@ -59,7 +66,7 @@ router.post('/', async (req, res) => {
         const values = [
             name,
             owner_member_id || 1,
-            history ? JSON.stringify(history) : '{}',
+            history || {},
             email || null,
             phone || null,
             dni || null,
@@ -78,7 +85,7 @@ router.post('/', async (req, res) => {
     }
 });
 
-// 4. ACTUALIZAR PERFIL (PUT con campos de Neon)
+// 4. ACTUALIZAR PERFIL (Guardado del Perfil Psicológico)
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const {
@@ -101,7 +108,7 @@ router.put('/:id', async (req, res) => {
             gender || null,
             insurance_name || null,
             insurance_number || null,
-            history ? JSON.stringify(history) : '{}',
+            history || {},
             id
         ];
 
@@ -123,22 +130,36 @@ router.get('/:id/export-pdf', async (req, res) => {
     const { id } = req.params;
     try {
         const patientQuery = `SELECT * FROM patients WHERE id = $1`;
+        // CORRECCIÓN: Asegúrate de que el nombre de la tabla sea clinical_notes o notes según tu DB
         const notesQuery = `SELECT * FROM clinical_notes WHERE patient_id = $1 ORDER BY created_at DESC`;
 
-        const patient = await req.pool.query(patientQuery, [id]);
-        const notes = await req.pool.query(notesQuery, [id]);
+        const patientRes = await req.pool.query(patientQuery, [id]);
+        const notesRes = await req.pool.query(notesQuery, [id]);
 
-        if (patient.rows.length === 0) {
+        if (patientRes.rows.length === 0) {
             return res.status(404).json({ error: "Paciente no encontrado" });
         }
 
         res.json({
-            patient: patient.rows[0],
-            notes: notes.rows
+            patient: patientRes.rows[0],
+            notes: notesRes.rows
         });
     } catch (error) {
         console.error("❌ Error en exportación:", error);
         res.status(500).json({ error: "Error al generar datos de exportación" });
+    }
+});
+
+// 6. OBTENER NOTAS DEL PACIENTE (Extra para tu timeline)
+router.get('/:id/notes', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const query = `SELECT * FROM clinical_notes WHERE patient_id = $1 ORDER BY created_at DESC`;
+        const { rows } = await req.pool.query(query, [id]);
+        res.json({ data: rows });
+    } catch (error) {
+        console.error("❌ Error al obtener notas:", error);
+        res.status(500).json({ error: "Error al obtener notas" });
     }
 });
 

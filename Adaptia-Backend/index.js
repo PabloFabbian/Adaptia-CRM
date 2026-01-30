@@ -20,7 +20,7 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
-// Middleware para inyectar el pool en cada request (Crítico para que patientRouter funcione)
+// Middleware para inyectar el pool
 app.use((req, res, next) => {
     req.pool = pool;
     next();
@@ -55,8 +55,46 @@ app.post('/api/auth/login', async (req, res) => {
 // --- 4. RUTAS MODULARES ---
 app.use('/api/patients', patientRouter);
 
-// --- 5. OTROS RECURSOS ---
-app.get('/', (req, res) => res.send('🚀 Adaptia API Operativa'));
+// --- 5. ENDPOINTS DE NOTAS Y CITAS (Directos en Index) ---
+
+// OBTENER NOTAS DE UN PACIENTE
+app.get('/api/patients/:id/notes', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const query = `
+            SELECT cn.id, cn.patient_id, cn.member_id, cn.content, cn.title, cn.summary, cn.category, cn.created_at, m.name as author 
+            FROM clinical_notes cn
+            LEFT JOIN members m ON cn.member_id = m.id
+            WHERE cn.patient_id = $1
+            ORDER BY cn.created_at DESC
+        `;
+        const { rows } = await req.pool.query(query, [id]);
+        res.json({ data: rows });
+    } catch (err) {
+        console.error("❌ Error al obtener notas:", err.message);
+        res.status(500).json({ error: "Error al obtener el historial" });
+    }
+});
+
+// CREAR NOTA CLÍNICA
+app.post('/api/clinical-notes', async (req, res) => {
+    const { patient_id, member_id, content, title, summary, category } = req.body;
+    if (!patient_id || !content) return res.status(400).json({ error: "Datos incompletos" });
+
+    try {
+        const query = `
+            INSERT INTO clinical_notes (patient_id, member_id, content, title, summary, category, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            RETURNING *;
+        `;
+        const values = [patient_id, member_id || 1, content, title || 'Nota', summary || '', category || 'Evolución'];
+        const { rows } = await req.pool.query(query, values);
+        res.status(201).json({ success: true, data: rows[0] });
+    } catch (err) {
+        console.error("❌ Error SQL:", err.message);
+        res.status(500).json({ error: "Error interno" });
+    }
+});
 
 // CITAS
 app.get(['/api/appointments', '/api/appointments/all'], async (req, res) => {
@@ -85,43 +123,6 @@ app.get(['/api/appointments', '/api/appointments/all'], async (req, res) => {
     }
 });
 
-// HISTORIAL DE NOTAS
-app.get('/api/patients/:id/notes', async (req, res) => {
-    const { id } = req.params;
-    try {
-        const query = `
-            SELECT cn.id, cn.patient_id, cn.member_id, cn.content, cn.title, cn.summary, cn.category, cn.created_at, m.name as author 
-            FROM clinical_notes cn
-            LEFT JOIN members m ON cn.member_id = m.id
-            WHERE cn.patient_id = $1
-            ORDER BY cn.created_at DESC
-        `;
-        const { rows } = await req.pool.query(query, [id]);
-        res.json({ data: rows });
-    } catch (err) {
-        console.error("❌ Error al obtener notas:", err.message);
-        res.status(500).json({ error: "Error al obtener el historial" });
-    }
-});
-
-// ESCRITURA DE NOTAS
-app.post('/api/clinical-notes', async (req, res) => {
-    const { patient_id, member_id, content, title, summary, category } = req.body;
-    if (!patient_id || !content) return res.status(400).json({ error: "Datos incompletos" });
-
-    try {
-        const query = `
-            INSERT INTO clinical_notes (patient_id, member_id, content, title, summary, category, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, NOW())
-            RETURNING *;
-        `;
-        const values = [patient_id, member_id || 1, content, title || 'Nota', summary || '', category || 'Evolución'];
-        const { rows } = await req.pool.query(query, values);
-        res.status(201).json({ success: true, data: rows[0] });
-    } catch (err) {
-        console.error("❌ Error SQL:", err.message);
-        res.status(500).json({ error: "Error interno" });
-    }
-});
+app.get('/', (req, res) => res.send('🚀 Adaptia API Operativa'));
 
 app.listen(PORT, () => console.log(`🚀 Servidor Adaptia corriendo en puerto ${PORT}`));

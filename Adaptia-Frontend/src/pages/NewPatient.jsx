@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { UserPlus, ArrowLeft, Mail, Phone, CreditCard, MapPin, AlertCircle, ExternalLink, Calendar, Save, Edit3, HeartPulse, Fingerprint } from 'lucide-react';
+import { UserPlus, ArrowLeft, Mail, Phone, CreditCard, MapPin, AlertCircle, ExternalLink, Calendar, Save, Edit3, HeartPulse, Fingerprint, BrainCircuit } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -17,7 +17,6 @@ export const NewPatient = () => {
     const [error, setError] = useState('');
     const [duplicatePatient, setDuplicatePatient] = useState(null);
 
-    // --- ESTADO INICIAL ACTUALIZADO CON LOS CAMPOS DE NEON ---
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -25,9 +24,15 @@ export const NewPatient = () => {
         dni: '',
         address: '',
         birth_date: '',
-        gender: '',           // Nuevo campo
-        insurance_name: '',    // Nuevo campo
-        insurance_number: ''   // Nuevo campo
+        gender: '',
+        insurance_name: '',
+        insurance_number: '',
+        // --- EL CAJÓN DE SASTRE (HISTORY) ---
+        history: {
+            motivo_consulta: '',
+            antecedentes: '',
+            medicacion: ''
+        }
     });
 
     useEffect(() => {
@@ -48,7 +53,13 @@ export const NewPatient = () => {
                             gender: p.gender || '',
                             insurance_name: p.insurance_name || '',
                             insurance_number: p.insurance_number || '',
-                            birth_date: p.birth_date ? p.birth_date.split('T')[0] : ''
+                            birth_date: p.birth_date ? p.birth_date.split('T')[0] : '',
+                            // Cargamos history si existe, si no, el estado inicial
+                            history: p.history && typeof p.history === 'object' ? p.history : {
+                                motivo_consulta: '',
+                                antecedentes: '',
+                                medicacion: ''
+                            }
                         });
                     }
                 } catch (err) {
@@ -68,9 +79,20 @@ export const NewPatient = () => {
     };
 
     const handleChange = (e) => {
+        const { name, value } = e.target;
         setError('');
         setDuplicatePatient(null);
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+
+        // Lógica para manejar campos anidados en 'history'
+        if (name.startsWith('history.')) {
+            const field = name.split('.')[1];
+            setFormData(prev => ({
+                ...prev,
+                history: { ...prev.history, [field]: value }
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -104,8 +126,7 @@ export const NewPatient = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
-                    owner_member_id: user?.id || 1,
-                    history: {}
+                    owner_member_id: user?.id || 1
                 })
             });
 
@@ -290,7 +311,7 @@ export const NewPatient = () => {
                     </div>
                 </div>
 
-                {/* SECCIÓN 3: COBERTURA MÉDICA (NUEVA BASADA EN NEON) */}
+                {/* SECCIÓN 3: SEGURO MÉDICO */}
                 <div className="bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-[2.5rem] p-10 shadow-sm">
                     <h2 className="text-sm font-bold mb-8 flex items-center gap-3 text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">
                         <span className="w-9 h-9 bg-purple-500/10 text-purple-500 rounded-md flex items-center justify-center text-xs">03</span>
@@ -311,13 +332,60 @@ export const NewPatient = () => {
                         </div>
 
                         <div className="relative">
-                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">Nº de Póliza / Afiliado</label>
+                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">Nº de Póliza</label>
                             <div className="relative">
                                 <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600" />
                                 <input
                                     name="insurance_number" value={formData.insurance_number} onChange={handleChange}
                                     className={inputClass(false)}
                                     placeholder="000000000000"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* SECCIÓN 4: PERFIL PSICOLÓGICO (ESTO VA A LA COLUMNA HISTORY) */}
+                <div className="bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-[2.5rem] p-10 shadow-sm">
+                    <h2 className="text-sm font-bold mb-8 flex items-center gap-3 text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">
+                        <span className="w-9 h-9 bg-teal-500/10 text-teal-500 rounded-md flex items-center justify-center text-xs">04</span>
+                        Perfil Psicológico Inicial
+                    </h2>
+
+                    <div className="space-y-8">
+                        <div className="relative">
+                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">Motivo de Consulta Principal</label>
+                            <div className="relative">
+                                <BrainCircuit size={18} className="absolute left-4 top-4 text-gray-300 dark:text-gray-600" />
+                                <textarea
+                                    name="history.motivo_consulta"
+                                    value={formData.history.motivo_consulta}
+                                    onChange={handleChange}
+                                    className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-100 dark:border-dark-border bg-gray-50/50 dark:bg-white/5 text-gray-800 dark:text-gray-100 outline-none focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500/50 min-h-[100px]"
+                                    placeholder="Describe brevemente por qué acude a consulta..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="relative">
+                                <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">Antecedentes / Notas</label>
+                                <input
+                                    name="history.antecedentes"
+                                    value={formData.history.antecedentes}
+                                    onChange={handleChange}
+                                    className={inputClass(false)}
+                                    placeholder="Ej. Depresión previa, familia..."
+                                />
+                            </div>
+                            <div className="relative">
+                                <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 mb-3 ml-1 uppercase tracking-widest">Medicación Actual</label>
+                                <input
+                                    name="history.medicacion"
+                                    value={formData.history.medicacion}
+                                    onChange={handleChange}
+                                    className={inputClass(false)}
+                                    placeholder="¿Toma algún psicofármaco?"
                                 />
                             </div>
                         </div>

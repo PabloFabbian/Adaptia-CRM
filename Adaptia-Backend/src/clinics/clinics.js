@@ -1,7 +1,19 @@
 import express from 'express';
+import React from 'react';
+import { render } from '@react-email/render';
+import { Resend } from 'resend';
+import { InviteEmail } from '../emails/InviteEmail.jsx';
+import { getRoles } from './roles.js';
+
 const router = express.Router();
 
-// --- 1. LECTURA Y VALIDACIÓN ---
+// Inicializamos Resend con tu API Key
+const resend = new Resend('re_QWE8Aegd_L76Y9WzH2pQZpXA8rUZYW9G8');
+
+// --- 1. CONFIGURACIÓN DE ROLES ---
+router.get('/roles', getRoles);
+
+// --- 2. LECTURA Y VALIDACIÓN ---
 
 /**
  * Valida un token de invitación antes de que el usuario la acepte.
@@ -29,29 +41,18 @@ router.get('/invitations/validate/:token', async (req, res) => {
 });
 
 /**
- * Obtiene miembros activos e invitaciones pendientes de una clínica.
+ * Obtiene directorio de la clínica (miembros + invitaciones)
  */
 router.get('/:clinicId/members-and-invitations', async (req, res) => {
     const { clinicId } = req.params;
-
-    if (!req.pool) {
-        return res.status(500).json({ error: "Error de configuración de DB" });
-    }
+    if (!req.pool) return res.status(500).json({ error: "Error de configuración de DB" });
 
     try {
-        // Query de Miembros: Trae el email desde USERS vía LEFT JOIN
         const membersQuery = `
-            SELECT 
-                m.id, 
-                m.name, 
-                u.email, 
-                r.name as role_name, 
-                m.user_id,
+            SELECT m.id, m.name, u.email, r.name as role_name, m.user_id,
                 COALESCE(
                     (SELECT json_agg(json_build_object('type', c.resource_type, 'granted', c.is_granted))
-                    FROM consents c 
-                    WHERE c.member_id = m.id), 
-                    '[]'
+                    FROM consents c WHERE c.member_id = m.id), '[]'
                 ) as consents
             FROM members m 
             JOIN roles r ON m.role_id = r.id 
@@ -73,85 +74,103 @@ router.get('/:clinicId/members-and-invitations', async (req, res) => {
             req.pool.query(invitationsQuery, [clinicId])
         ]);
 
-        res.json({
-            members: membersRes.rows,
-            invitations: invitationsRes.rows
-        });
+        res.json({ members: membersRes.rows, invitations: invitationsRes.rows });
     } catch (err) {
-        console.error("❌ Error en GET members-and-invitations:", err.message);
+        console.error("❌ Error en directorio:", err.message);
         res.status(500).json({ error: "No se pudo obtener el directorio" });
     }
 });
 
-// --- 2. GESTIÓN DE INVITACIONES ---
+// --- 3. GESTIÓN DE INVITACIONES (ENVÍO REAL CON RESEND) ---
 
 router.post('/:clinicId/invitations', async (req, res) => {
     const { clinicId } = req.params;
     const { email, role_id, invited_by } = req.body;
+
     // Generación de token único
     const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 
     try {
+        // 1. Guardar en base de datos
         const query = `
             INSERT INTO invitations (clinic_id, email, role_id, token, invited_by)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING *;
+            VALUES ($1, $2, $3, $4, $5) RETURNING *;
         `;
         const { rows } = await req.pool.query(query, [clinicId, email, role_id, token, invited_by]);
-        res.status(201).json({ success: true, invitation: rows[0] });
+
+        // 2. Obtener nombres para personalizar el correo
+        const clinicRes = await req.pool.query('SELECT name FROM clinics WHERE id = $1', [clinicId]);
+        const senderRes = await req.pool.query('SELECT name FROM users WHERE id = $1', [invited_by]);
+
+        const clinicName = clinicRes.rows[0]?.name || "Adaptia Clinic";
+        const senderName = senderRes.rows[0]?.name || "Un colega";
+        const inviteLink = `${process.env.FRONTEND_URL}/register?token=${token}`;
+
+        // 3. Renderizar el correo a HTML
+        const emailHtml = await render(
+            <InviteEmail
+                clinicName={clinicName}
+                senderName={senderName}
+                inviteLink={inviteLink}
+            />
+        );
+
+        // 4. Envío Real a través de Resend
+        const { data, error } = await resend.emails.send({
+            from: 'Adaptia <onboarding@resend.dev>',
+            to: [email],
+            subject: `${senderName} te ha invitado a unirte a ${clinicName}`,
+            html: emailHtml,
+        });
+
+        if (error) {
+            console.error("❌ Error de Resend:", error);
+            return res.status(400).json({ error: "La invitación se guardó pero el correo falló." });
+        }
+
+        res.status(201).json({
+            success: true,
+            invitation: rows[0],
+            emailId: data.id
+        });
+
     } catch (err) {
-        console.error("❌ Error al crear invitación:", err.message);
-        res.status(500).json({ error: "No se pudo procesar la invitación" });
+        console.error("❌ Error en flujo de invitación:", err.message);
+        res.status(500).json({ error: "Error al procesar invitación" });
     }
 });
 
-/**
- * Acepta una invitación: Crea el registro en members y establece la soberanía inicial.
- */
+// --- 4. ACEPTACIÓN Y SOBERANÍA ---
+
 router.post('/accept-invitation', async (req, res) => {
     const { token, userId } = req.body;
-
     try {
         await req.pool.query('BEGIN');
 
-        // 1. Validar la invitación
         const invRes = await req.pool.query(
             'SELECT * FROM invitations WHERE token = $1 AND status = $2',
             [token, 'pending']
         );
+        if (invRes.rows.length === 0) throw new Error("Invitación no válida o expirada.");
 
-        if (invRes.rows.length === 0) throw new Error("Invitación no válida o ya aceptada.");
         const invitation = invRes.rows[0];
 
-        // 2. Insertar en MEMBERS vinculando el USER_ID (Obteniendo el nombre desde users)
         const memberQuery = `
             INSERT INTO members (name, role_id, clinic_id, user_id) 
             SELECT name, $1, $2, $3 FROM users WHERE id = $3
             RETURNING id, name;
         `;
         const memberRes = await req.pool.query(memberQuery, [invitation.role_id, invitation.clinic_id, userId]);
-
-        if (memberRes.rows.length === 0) throw new Error("El usuario no existe para ser vinculado.");
-
         const newMemberId = memberRes.rows[0].id;
 
-        // 3. Establecer Soberanía Inicial: TRUE por defecto para el propio especialista (o FALSE según tu modelo)
-        // Aquí lo dejamos en FALSE para que el especialista deba activarlos explícitamente.
         const resources = ['patients', 'appointments', 'clinical_notes'];
-        const consentValues = resources.map(resType => `(${newMemberId}, '${resType}', false)`).join(',');
+        const values = resources.map(r => `(${newMemberId}, '${r}', false)`).join(',');
 
-        await req.pool.query(`
-            INSERT INTO consents (member_id, resource_type, is_granted) 
-            VALUES ${consentValues}
-            ON CONFLICT (member_id, resource_type) DO NOTHING
-        `);
-
-        // 4. Marcar invitación como aceptada
+        await req.pool.query(`INSERT INTO consents (member_id, resource_type, is_granted) VALUES ${values}`);
         await req.pool.query('UPDATE invitations SET status = $1 WHERE id = $2', ['accepted', invitation.id]);
 
         await req.pool.query('COMMIT');
         res.json({ success: true, member: memberRes.rows[0] });
-
     } catch (err) {
         await req.pool.query('ROLLBACK');
         console.error("❌ Error al aceptar invitación:", err.message);
@@ -159,11 +178,8 @@ router.post('/accept-invitation', async (req, res) => {
     }
 });
 
-// --- 3. GESTIÓN DE CONSENTIMIENTOS (SOBERANÍA) ---
-
 router.patch('/consent', async (req, res) => {
     const { memberId, resourceType, isGranted } = req.body;
-
     try {
         const query = `
             INSERT INTO consents (member_id, resource_type, is_granted)
@@ -175,8 +191,7 @@ router.patch('/consent', async (req, res) => {
         const { rows } = await req.pool.query(query, [memberId, resourceType, isGranted]);
         res.json({ success: true, consent: rows[0] });
     } catch (error) {
-        console.error("❌ Error en PATCH consent:", error.message);
-        res.status(500).json({ error: "Error al actualizar soberanía" });
+        res.status(500).json({ error: "Error de soberanía" });
     }
 });
 

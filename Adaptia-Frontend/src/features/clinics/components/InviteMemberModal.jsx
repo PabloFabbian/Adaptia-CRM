@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../../context/AuthContext'; // Importante para el ID del owner
+import { useAuth } from '../../../context/AuthContext';
 import { Mail, Shield, X, Loader2, Send, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 
 export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
-    const { user, activeClinic } = useAuth(); // Obtenemos el usuario logueado y la clínica activa
+    const { user, activeClinic } = useAuth();
     const [email, setEmail] = useState('');
     const [roleId, setRoleId] = useState('');
     const [roles, setRoles] = useState([]);
@@ -13,7 +13,6 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
     const [fetchingRoles, setFetchingRoles] = useState(true);
     const [sentStatus, setSentStatus] = useState(false);
 
-    // Cargar los roles de gobernanza disponibles
     useEffect(() => {
         if (isOpen) {
             const fetchRoles = async () => {
@@ -22,7 +21,7 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
                     const response = await fetch(`${import.meta.env.VITE_API_URL}/api/roles`);
                     const data = await response.json();
 
-                    // Filtramos para no permitir invitar a otro "Owner" si es necesario
+                    // Filtro exacto para 'Owner'
                     const availableRoles = data.filter(r => r.name !== 'Owner');
                     setRoles(availableRoles);
 
@@ -39,7 +38,7 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!activeClinic?.id) return;
+        if (!activeClinic?.id || !roleId) return;
 
         setLoading(true);
         try {
@@ -49,23 +48,21 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
                 body: JSON.stringify({
                     email,
                     role_id: roleId,
-                    invited_by: user.id // Dinámico: Pablo o el admin actual
+                    invited_by: user.id
                 }),
             });
 
             if (!response.ok) throw new Error('Error al enviar invitación');
 
             setSentStatus(true);
-
-            // Pequeño delay para mostrar el feedback visual de éxito
             setTimeout(() => {
-                onSuccess(); // Refresca el directorio en Clinics.jsx
+                onSuccess();
                 handleClose();
             }, 1500);
 
         } catch (error) {
             console.error("❌ Error:", error);
-            alert("No se pudo procesar la invitación. Verifica los datos.");
+            alert("No se pudo procesar la invitación.");
         } finally {
             setLoading(false);
         }
@@ -80,11 +77,10 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
             <div className="w-full max-w-md">
                 <Card className="shadow-2xl border-white/5 overflow-hidden bg-white dark:bg-[#1a1f2b]">
                     <div className="p-8">
-                        {/* Header */}
                         <div className="flex justify-between items-start mb-8">
                             <div>
                                 <h2 className="text-2xl font-semibold text-gray-800 dark:text-white tracking-tight">Expandir Red</h2>
@@ -92,7 +88,7 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
                                     El nuevo miembro mantendrá su soberanía de datos.
                                 </p>
                             </div>
-                            <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                            <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
                                 <X size={20} strokeWidth={1.5} />
                             </button>
                         </div>
@@ -107,7 +103,6 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* Email */}
                                 <div>
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block">Email Profesional</label>
                                     <div className="relative group">
@@ -123,7 +118,6 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
                                     </div>
                                 </div>
 
-                                {/* Rol */}
                                 <div>
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block">Nivel de Gobernanza</label>
                                     <div className="relative group">
@@ -147,36 +141,19 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
                                     </div>
                                 </div>
 
-                                {/* Info Box */}
                                 <div className="bg-adaptia-mint/5 border border-adaptia-mint/10 rounded-2xl p-4">
-                                    <p className="text-[10px] text-adaptia-mint/80 leading-relaxed">
-                                        💡 El colaborador invitado recibirá un correo para activar su cuenta. Por defecto, su información será privada hasta que otorgue consentimiento.
+                                    <p className="text-[10px] text-adaptia-mint/80 leading-relaxed italic">
+                                        💡 El colaborador invitado recibirá un correo para activar su cuenta.
+                                        Por defecto, su información será privada hasta que otorgue consentimiento.
                                     </p>
                                 </div>
 
-                                {/* Acciones */}
                                 <div className="flex gap-4 pt-4">
-                                    <Button
-                                        variant="secondary"
-                                        type="button"
-                                        onClick={handleClose}
-                                        className="flex-1 justify-center py-6 bg-white/5 border-white/10 text-gray-400 hover:text-white"
-                                    >
+                                    <Button variant="secondary" type="button" onClick={handleClose} className="flex-1 justify-center py-6 bg-white/5 border-white/10 text-gray-400 hover:text-white">
                                         Cancelar
                                     </Button>
-                                    <Button
-                                        variant="primary"
-                                        type="submit"
-                                        disabled={loading || fetchingRoles || !email}
-                                        className="flex-1 justify-center py-6 bg-adaptia-mint text-black hover:bg-adaptia-mint/90 shadow-lg shadow-adaptia-mint/20"
-                                    >
-                                        {loading ? (
-                                            <Loader2 className="animate-spin" size={20} />
-                                        ) : (
-                                            <span className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest">
-                                                Enviar <Send size={14} />
-                                            </span>
-                                        )}
+                                    <Button variant="primary" type="submit" disabled={loading || fetchingRoles || !email} className="flex-1 justify-center py-6 bg-adaptia-mint text-black hover:bg-adaptia-mint/90 shadow-lg shadow-adaptia-mint/20">
+                                        {loading ? <Loader2 className="animate-spin" size={20} /> : <span className="flex items-center gap-2 font-bold text-[11px] uppercase tracking-widest">Enviar <Send size={14} /></span>}
                                     </Button>
                                 </div>
                             </form>

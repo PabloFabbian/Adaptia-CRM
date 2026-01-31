@@ -14,7 +14,7 @@ import { CalendarPage } from './pages/CalendarPage';
 import { BillingPage } from './pages/BillingPage';
 import { CategoriesPage } from './pages/SystemPages';
 import Clinics from './pages/Clinics';
-import { NewPatient } from './pages/NewPatient'; // Este componente ahora maneja Crear y Editar
+import { NewPatient } from './pages/NewPatient';
 import { Login } from './pages/Login';
 
 // --- UI & ICONS ---
@@ -57,7 +57,11 @@ function App() {
       <Routes>
         {!user ? (
           <>
+            {/* Manejamos tanto /login como /register (invitaciones) 
+                con el mismo componente Auth/Login 
+            */}
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Login />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </>
         ) : (
@@ -69,11 +73,7 @@ function App() {
             <Route path="pacientes">
               <Route index element={<PatientsPage />} />
               <Route path=":id/historial" element={<PatientHistoryPage />} />
-
-              {/* Esta ruta permite editar usando el ID */}
               <Route path="editar/:id" element={<NewPatient />} />
-
-              {/* Ruta interna para crear (opcional, si prefieres /pacientes/nuevo) */}
               <Route path="nuevo" element={<NewPatient />} />
             </Route>
 
@@ -100,6 +100,7 @@ function App() {
 
             {/* SEGURIDAD & FALLBACK */}
             <Route path="login" element={<Navigate to="/" replace />} />
+            <Route path="register" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         )}

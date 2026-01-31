@@ -1,13 +1,20 @@
-import { hasPermission, CAPABILITIES, SCOPES } from './permissions.js';
+/**
+ * Filtra un array de recursos en memoria.
+ * Útil para filtrar resultados que ya trajiste de la DB o en el frontend.
+ */
+export const filterResourcesInMemory = (viewerMemberId, resources, consents, hasGlobalPower) => {
+    return resources.filter(res => {
+        // 1. Es mío
+        if (res.owner_member_id === viewerMemberId) return true;
 
-//Filtra recursos (citas o pacientes) basándose en permisos.
+        // 2. Si tengo poder global, reviso si el dueño dio permiso
+        if (hasGlobalPower) {
+            const ownerConsent = consents.find(c =>
+                c.member_id === res.owner_member_id && c.is_granted === true
+            );
+            return !!ownerConsent;
+        }
 
-export const filterResources = (requestingMember, allResources, allMembers, capability, scope) => {
-    return allResources.filter(resource => {
-        // Buscamos quién es el dueño del recurso
-        const owner = allMembers.find(m => m.id === resource.ownerId);
-
-        // Aplicamos tu lógica maestra
-        return hasPermission(requestingMember, owner, capability, scope);
+        return false;
     });
 };

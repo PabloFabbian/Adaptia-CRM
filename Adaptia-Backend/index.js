@@ -19,27 +19,54 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
+// Inyectar pool en el request para uso en routers
 app.use((req, res, next) => {
     req.pool = pool;
     next();
 });
 
+// Sincronización automática de esquema
 pool.query(createDatabaseSchema)
     .then(() => console.log("✨ Tablas sincronizadas en Neon"))
     .catch(err => console.error("❌ Error DB:", err));
 
+// --- LOGIN CORREGIDO PARA TU ESTRUCTURA ACTUAL ---
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
-        const query = 'SELECT id, name, email, password_hash FROM users WHERE email = $1';
+        // Usamos JOIN por 'name' ya que tu tabla 'members' no tiene 'user_id'
+        const query = `
+            SELECT 
+                u.id, 
+                u.name, 
+                u.email, 
+                u.password_hash, 
+                r.name as role_name, 
+                m.clinic_id 
+            FROM users u
+            LEFT JOIN members m ON u.name = m.name 
+            LEFT JOIN roles r ON m.role_id = r.id
+            WHERE u.email = $1
+        `;
         const { rows } = await pool.query(query, [email]);
+
         if (rows.length > 0) {
             const user = rows[0];
+
+            // Verificación simple de contraseña
             if (user.password_hash === password) {
-                const { password_hash: _, ...userWithoutPassword } = user;
-                return res.json({ user: userWithoutPassword });
+                return res.json({
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role_name || 'Especialista', // Fallback por seguridad
+                        activeClinicId: user.clinic_id
+                    }
+                });
             }
         }
+
         res.status(401).json({ message: "Email o contraseña incorrectos" });
     } catch (err) {
         console.error("❌ Error en Login:", err.message);
@@ -49,7 +76,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.use('/api/patients', patientRouter);
 
-// --- ENDPOINTS DE NOTAS Y PDF ---
+// --- ENDPOINTS DE NOTAS CLÍNICAS ---
 
 app.get('/api/patients/:id/notes', async (req, res) => {
     const { id } = req.params;
@@ -69,7 +96,6 @@ app.get('/api/patients/:id/notes', async (req, res) => {
     }
 });
 
-// NUEVO: ENDPOINT PARA EXPORTAR PDF (Combina paciente y notas)
 app.get('/api/patients/:id/export-pdf', async (req, res) => {
     const { id } = req.params;
     try {
@@ -109,31 +135,32 @@ app.post('/api/clinical-notes', async (req, res) => {
     }
 });
 
+// --- ENDPOINT CITAS CON FILTRO DE SOBERANÍA ---
+
 app.get(['/api/appointments', '/api/appointments/all'], async (req, res) => {
     try {
+        // Estos IDs normalmente vendrían de un Token JWT. Usamos 1 por defecto para desarrollo.
         const viewerMemberId = 1;
         const clinicId = 1;
-        let filter;
-        try {
-            filter = await getResourceFilter(req.pool, viewerMemberId, clinicId, 'appointments');
-        } catch (e) {
-            filter = { query: '1=1', params: [] };
-        }
+
+        const filter = await getResourceFilter(req.pool, viewerMemberId, clinicId, 'appointments');
+
         const query = `
             SELECT a.id, a.date, a.status, a.owner_member_id, p.name as patient_name 
             FROM appointments a
             LEFT JOIN patients p ON a.patient_id = p.id
-            WHERE a.${filter.query} 
+            WHERE a.clinic_id = $1 AND ${filter.query} 
             ORDER BY a.date DESC
         `;
-        const { rows } = await req.pool.query(query, filter.params);
+
+        const { rows } = await req.pool.query(query, [clinicId, ...filter.params]);
         res.json({ data: rows || [] });
     } catch (err) {
-        console.error("❌ Error en SQL Appointments:", err.message);
-        res.status(200).json({ data: [], message: "Error controlado" });
+        console.error("❌ Error en Appointments:", err.message);
+        res.status(200).json({ data: [], message: "Error de permisos controlado" });
     }
 });
 
 app.get('/', (req, res) => res.send('🚀 Adaptia API Operativa'));
 
-app.listen(PORT, () => console.log(`🚀 Servidor Adaptia corriendo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor Adaptia en puerto ${PORT}`));

@@ -1,27 +1,51 @@
 import express from 'express';
 const router = express.Router();
 
-// --- 1. LECTURA Y LISTADO ---
+// --- 1. LECTURA Y VALIDACIÓN ---
+
+/**
+ * Valida un token de invitación antes de que el usuario la acepte.
+ * Usado por AcceptInvitation.jsx para mostrar nombre de clínica y rol.
+ */
+router.get('/invitations/validate/:token', async (req, res) => {
+    const { token } = req.params;
+    try {
+        const query = `
+            SELECT i.token, i.email, i.status, c.name as clinic_name, r.name as role_name 
+            FROM invitations i
+            JOIN clinics c ON i.clinic_id = c.id
+            JOIN roles r ON i.role_id = r.id
+            WHERE i.token = $1 AND i.status = 'pending'
+        `;
+        const { rows } = await req.pool.query(query, [token]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "Invitación no válida, expirada o ya utilizada." });
+        }
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error("❌ Error al validar token:", err);
+        res.status(500).json({ error: "Error interno del servidor" });
+    }
+});
 
 /**
  * Obtiene miembros activos e invitaciones pendientes de una clínica.
- * Útil para la pestaña "Miembros" de Clinics.jsx.
  */
 router.get('/:clinicId/members-and-invitations', async (req, res) => {
     const { clinicId } = req.params;
     try {
-        // Miembros actuales con sus nombres de roles
         const membersQuery = `
-            SELECT m.*, r.name as role_name 
+            SELECT m.id, m.name, r.name as role_name, m.user_id
             FROM members m 
             JOIN roles r ON m.role_id = r.id 
             WHERE m.clinic_id = $1
             ORDER BY m.id DESC
         `;
 
-        // Invitaciones que aún no han sido aceptadas
         const invitationsQuery = `
-            SELECT i.*, r.name as role_name 
+            SELECT i.id, i.email, r.name as role_name, i.status, i.created_at
             FROM invitations i 
             JOIN roles r ON i.role_id = r.id 
             WHERE i.clinic_id = $1 AND i.status = 'pending'
@@ -39,14 +63,14 @@ router.get('/:clinicId/members-and-invitations', async (req, res) => {
         });
     } catch (err) {
         console.error("❌ Error al listar miembros:", err);
-        res.status(500).json({ error: "Error al obtener el listado del directorio" });
+        res.status(500).json({ error: "No se pudo obtener el directorio" });
     }
 });
 
 // --- 2. GESTIÓN DE INVITACIONES ---
 
 /**
- * Crea una invitación para un profesional.
+ * Crea una invitación.
  */
 router.post('/:clinicId/invitations', async (req, res) => {
     const { clinicId } = req.params;
@@ -59,7 +83,7 @@ router.post('/:clinicId/invitations', async (req, res) => {
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *;
         `;
-        const { rows } = await req.pool.query(query, [clinicId, email, role_id, invited_by]);
+        const { rows } = await req.pool.query(query, [clinicId, email, role_id, token, invited_by]);
         res.status(201).json({ success: true, invitation: rows[0] });
     } catch (err) {
         console.error("❌ Error al invitar:", err);
@@ -68,8 +92,7 @@ router.post('/:clinicId/invitations', async (req, res) => {
 });
 
 /**
- * Acepta una invitación y vincula al usuario como miembro.
- * Implementa la filosofía de "Consentimiento por Defecto: FALSE".
+ * Acepta una invitación: El momento clave de la vinculación.
  */
 router.post('/accept-invitation', async (req, res) => {
     const { token, userId } = req.body;
@@ -82,10 +105,9 @@ router.post('/accept-invitation', async (req, res) => {
             [token, 'pending']
         );
 
-        if (invRes.rows.length === 0) throw new Error("Invitación inválida o expirada");
+        if (invRes.rows.length === 0) throw new Error("La invitación ya no es válida.");
         const invitation = invRes.rows[0];
 
-        // Crear miembro vinculado
         const memberQuery = `
             INSERT INTO members (name, role_id, clinic_id, user_id) 
             SELECT name, $1, $2, $3 FROM users WHERE id = $3
@@ -94,7 +116,7 @@ router.post('/accept-invitation', async (req, res) => {
         const memberRes = await req.pool.query(memberQuery, [invitation.role_id, invitation.clinic_id, userId]);
         const newMemberId = memberRes.rows[0].id;
 
-        // Crear consentimientos apagados
+        // Filosofía Adaptia: Soberanía de datos por defecto (todo en FALSE)
         const resources = ['patients', 'appointments', 'clinical_notes'];
         for (const resType of resources) {
             await req.pool.query(
@@ -104,9 +126,10 @@ router.post('/accept-invitation', async (req, res) => {
         }
 
         await req.pool.query('UPDATE invitations SET status = $1 WHERE id = $2', ['accepted', invitation.id]);
-        await req.pool.query('COMMIT');
 
+        await req.pool.query('COMMIT');
         res.json({ success: true, member: memberRes.rows[0] });
+
     } catch (err) {
         await req.pool.query('ROLLBACK');
         res.status(400).json({ error: err.message });
@@ -116,7 +139,7 @@ router.post('/accept-invitation', async (req, res) => {
 // --- 3. GESTIÓN DE CONSENTIMIENTOS ---
 
 /**
- * El "Switch" de soberanía de datos del profesional.
+ * Actualiza la soberanía de datos del profesional.
  */
 router.patch('/consent', async (req, res) => {
     const { memberId, resourceType, isGranted, clinicId } = req.body;
@@ -132,7 +155,7 @@ router.patch('/consent', async (req, res) => {
         const { rows } = await req.pool.query(query, [memberId, resourceType, isGranted, clinicId]);
         res.json({ success: true, consent: rows[0] });
     } catch (error) {
-        res.status(500).json({ error: "Error al actualizar soberanía de datos" });
+        res.status(500).json({ error: "Error al actualizar soberanía" });
     }
 });
 

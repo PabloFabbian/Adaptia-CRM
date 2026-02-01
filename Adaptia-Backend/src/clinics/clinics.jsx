@@ -7,7 +7,7 @@ import { getRoles } from './roles.js';
 
 const router = express.Router();
 
-// --- CONFIGURACIÓN DE NODEMAILER (Igual que en index para consistencia) ---
+// --- CONFIGURACIÓN DE NODEMAILER ---
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -21,6 +21,7 @@ router.get('/roles', getRoles);
 
 // --- 2. LECTURA Y VALIDACIÓN ---
 
+// Valida si el token de la URL existe y está pendiente
 router.get('/invitations/validate/:token', async (req, res) => {
     const { token } = req.params;
     try {
@@ -38,6 +39,7 @@ router.get('/invitations/validate/:token', async (req, res) => {
         }
         res.json(rows[0]);
     } catch (err) {
+        console.error("❌ Error validando token:", err);
         res.status(500).json({ error: "Error interno del servidor" });
     }
 });
@@ -77,31 +79,36 @@ router.get('/:clinicId/members-and-invitations', async (req, res) => {
     }
 });
 
-// --- 3. GESTIÓN DE INVITACIONES (CORREGIDO SIN RESEND) ---
+// --- 3. GESTIÓN DE INVITACIONES ---
 
 router.post('/:clinicId/invitations', async (req, res) => {
     const { clinicId } = req.params;
     const { email, role_id, invited_by } = req.body;
 
+    // Generamos un token alfanumérico único
     const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 
     try {
         // 1. Guardar en base de datos
         const query = `
-            INSERT INTO invitations (clinic_id, email, role_id, token, invited_by)
-            VALUES ($1, $2, $3, $4, $5) RETURNING *;
+            INSERT INTO invitations (clinic_id, email, role_id, token, invited_by, status, created_at)
+            VALUES ($1, $2, $3, $4, $5, 'pending', NOW()) RETURNING *;
         `;
-        const { rows } = await req.pool.query(query, [clinicId, email, role_id, token, invited_by]);
+        const { rows } = await req.pool.query(query, [clinicId, email.toLowerCase(), role_id, token, invited_by]);
 
-        // 2. Obtener datos para personalizar
-        const clinicRes = await req.pool.query('SELECT name FROM clinics WHERE id = $1', [clinicId]);
-        const senderRes = await req.pool.query('SELECT name FROM users WHERE id = $1', [invited_by]);
+        // 2. Obtener nombres para el correo
+        const infoQuery = `
+            SELECT 
+                (SELECT name FROM clinics WHERE id = $1) as clinic_name,
+                (SELECT name FROM users WHERE id = $2) as sender_name
+        `;
+        const infoRes = await req.pool.query(infoQuery, [clinicId, invited_by]);
 
-        const clinicName = clinicRes.rows[0]?.name || "Adaptia Clinic";
-        const senderName = senderRes.rows[0]?.name || "Un colega";
-        const inviteLink = `${process.env.FRONTEND_URL}/register?token=${token}`;
+        const clinicName = infoRes.rows[0]?.clinic_name || "Adaptia Clinic";
+        const senderName = infoRes.rows[0]?.sender_name || "Un colega";
+        const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/register?token=${token}`;
 
-        // 3. Renderizar el correo (React Email)
+        // 3. Renderizar y enviar correo
         const emailHtml = await render(
             React.createElement(InviteEmail, {
                 clinicName,
@@ -110,7 +117,6 @@ router.post('/:clinicId/invitations', async (req, res) => {
             })
         );
 
-        // 4. Envío con NODEMAILER
         const mailOptions = {
             from: `"Adaptia" <${process.env.EMAIL_USER}>`,
             to: email,
@@ -120,13 +126,10 @@ router.post('/:clinicId/invitations', async (req, res) => {
 
         await transporter.sendMail(mailOptions);
 
-        res.status(201).json({
-            success: true,
-            invitation: rows[0]
-        });
+        res.status(201).json({ success: true, invitation: rows[0] });
 
     } catch (err) {
-        console.error("❌ Error en flujo de invitación:", err.message);
+        console.error("❌ Error en flujo de invitación:", err);
         res.status(500).json({ error: "Error al procesar invitación" });
     }
 });
@@ -138,6 +141,7 @@ router.post('/accept-invitation', async (req, res) => {
     try {
         await req.pool.query('BEGIN');
 
+        // 1. Verificar invitación
         const invRes = await req.pool.query(
             'SELECT * FROM invitations WHERE token = $1 AND status = $2',
             [token, 'pending']
@@ -146,6 +150,7 @@ router.post('/accept-invitation', async (req, res) => {
 
         const invitation = invRes.rows[0];
 
+        // 2. Crear miembro (Sincronizando el nombre desde la tabla users)
         const memberQuery = `
             INSERT INTO members (name, role_id, clinic_id, user_id) 
             SELECT name, $1, $2, $3 FROM users WHERE id = $3
@@ -154,16 +159,20 @@ router.post('/accept-invitation', async (req, res) => {
         const memberRes = await req.pool.query(memberQuery, [invitation.role_id, invitation.clinic_id, userId]);
         const newMemberId = memberRes.rows[0].id;
 
+        // 3. Configurar Soberanía de Datos Inicial (Todo en FALSE por defecto)
         const resources = ['patients', 'appointments', 'clinical_notes'];
         const values = resources.map(r => `(${newMemberId}, '${r}', false)`).join(',');
 
         await req.pool.query(`INSERT INTO consents (member_id, resource_type, is_granted) VALUES ${values}`);
-        await req.pool.query('UPDATE invitations SET status = $1 WHERE id = $2', ['accepted', invitation.id]);
+
+        // 4. Marcar invitación como aceptada
+        await req.pool.query('UPDATE invitations SET status = $1 WHERE token = $2', ['accepted', token]);
 
         await req.pool.query('COMMIT');
         res.json({ success: true, member: memberRes.rows[0] });
     } catch (err) {
         await req.pool.query('ROLLBACK');
+        console.error("❌ Error aceptando invitación:", err.message);
         res.status(400).json({ error: err.message });
     }
 });

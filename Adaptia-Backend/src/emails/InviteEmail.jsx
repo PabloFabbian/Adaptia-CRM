@@ -10,58 +10,81 @@ import {
     Section,
     Text,
     Tailwind,
+    Img,
+    Link,
 } from "@react-email/components";
-import React from 'react';
+import React from "react";
 
-export const InviteEmail = ({ clinicName, senderName, inviteLink }) => {
+export const InviteEmail = ({ clinicName = "la clínica", senderName = "Un colega", inviteLink = "#" }) => {
     return (
         <Html>
             <Head />
-            <Preview>Invitación a colaborar en {clinicName}</Preview>
+            <Preview>Únete a {clinicName} en Adaptia</Preview>
             <Tailwind>
-                <Body className="bg-[#f9fafb] my-auto mx-auto font-sans px-2">
-                    <Container className="border border-solid border-[#eaeaea] bg-white rounded my-[40px] mx-auto p-[20px] max-w-[465px] shadow-sm">
-                        <Section className="mt-[32px]">
-                            {/* Logo / Círculo central */}
-                            <div className="bg-[#50e3c2] w-12 h-12 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                                <span className="text-[#101828] font-bold text-xl">A</span>
-                            </div>
+                <Body className="bg-[#f4f7f9] py-10 font-sans">
+                    <Container className="bg-white border border-[#e5e7eb] rounded-[32px] p-10 max-w-[560px] mx-auto shadow-sm">
+
+                        <Section className="mb-10">
+                            {/* Corregido: cellPadding y cellSpacing en CamelCase para React */}
+                            <table align="center" border="0" cellPadding="0" cellSpacing="0" role="presentation">
+                                <tr>
+                                    <td align="center" style={{
+                                        backgroundColor: '#50e3c2',
+                                        width: '64px',
+                                        height: '64px',
+                                        borderRadius: '20px'
+                                    }}>
+                                        <Text className="text-[#101828] font-bold text-3xl m-0 leading-none">A</Text>
+                                    </td>
+                                </tr>
+                            </table>
                         </Section>
 
-                        <Heading className="text-[#101828] text-[24px] font-semibold text-center p-0 my-[30px] mx-0">
-                            Invitación a <strong>{clinicName}</strong>
+                        <Heading className="text-[#101828] text-2xl font-bold text-center mb-6 tracking-tight">
+                            Invitación Profesional
                         </Heading>
 
-                        <Text className="text-[#374151] text-[14px] leading-[24px]">
+                        <Text className="text-[#4b5563] text-base leading-relaxed">
                             Hola,
                         </Text>
 
-                        <Text className="text-[#374151] text-[14px] leading-[24px]">
-                            <strong>{senderName}</strong> te ha invitado a unirte a su red profesional en <strong>Adaptia</strong>.
-                            Al aceptar, podrás gestionar pacientes y citas manteniendo siempre la soberanía y privacidad de tus datos profesionales.
+                        <Text className="text-[#4b5563] text-base leading-relaxed mb-6">
+                            <strong className="text-[#101828]">{senderName}</strong> te ha invitado a unirte al equipo médico de <strong className="text-[#101828]">{clinicName}</strong> en la plataforma <strong>Adaptia</strong>.
                         </Text>
 
-                        <Section className="text-center mt-[32px] mb-[32px]">
+                        <Section style={{
+                            backgroundColor: '#f9fafb',
+                            borderRadius: '16px',
+                            padding: '24px',
+                            border: '1px solid #f3f4f6',
+                            marginBottom: '32px'
+                        }}>
+                            <Text className="text-[#6b7280] text-sm m-0 leading-relaxed italic text-center">
+                                "Al aceptar, podrás gestionar pacientes y citas bajo los protocolos de soberanía de datos de la clínica."
+                            </Text>
+                        </Section>
+
+                        <Section className="text-center mb-10">
+                            {/* Corregido: pX y pY no son props nativas de Button, usamos px y py con Tailwind */}
                             <Button
-                                className="bg-[#101828] rounded-xl text-white text-[14px] font-bold no-underline text-center px-6 py-4"
+                                className="bg-[#101828] text-[#50e3c2] px-8 py-4 rounded-xl font-bold text-sm uppercase tracking-widest no-underline inline-block"
                                 href={inviteLink}
                             >
                                 Aceptar Invitación
                             </Button>
                         </Section>
 
-                        <Text className="text-[#374151] text-[14px] leading-[24px]">
-                            O copia y pega esta URL en tu navegador:{" "}
-                            <br />
-                            <a href={inviteLink} className="text-[#0070f3] no-underline">
+                        <Text className="text-[#9ca3af] text-[10px] text-center mb-8">
+                            Si el botón no funciona, usa este enlace:
+                            <Link href={inviteLink} className="text-[#50e3c2] underline block mt-2 break-all">
                                 {inviteLink}
-                            </a>
+                            </Link>
                         </Text>
 
-                        <Hr className="border border-solid border-[#eaeaea] my-[26px] mx-0 w-full" />
+                        <Hr className="border-[#f3f4f6] mb-6" />
 
-                        <Text className="text-[#6b7280] text-[12px] leading-[20px]">
-                            Este mensaje fue enviado por el sistema de gestión de Adaptia. Si no esperabas esta invitación, puedes ignorar este correo.
+                        <Text className="text-[#9ca3af] text-[11px] font-bold uppercase tracking-[0.2em] text-center">
+                            Adaptia Clinic &bull; Secure Terminal 2026
                         </Text>
                     </Container>
                 </Body>

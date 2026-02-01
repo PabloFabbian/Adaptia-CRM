@@ -14,7 +14,7 @@ import { getRoles } from './src/clinics/roles.js';
 
 const app = express();
 
-// --- CONFIGURACIÓN DE NODEMAILER (GRATUITO) ---
+// --- CONFIGURACIÓN DE NODEMAILER ---
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -26,7 +26,7 @@ const transporter = nodemailer.createTransport({
 // Configuración de CORS
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -51,14 +51,16 @@ pool.query(createDatabaseSchema)
     .then(() => console.log("✨ Tablas sincronizadas en Neon"))
     .catch(err => console.error("❌ Error DB al sincronizar:", err));
 
-// --- 1. LOGIN / AUTH ---
+// --- 1. AUTENTICACIÓN (LOGIN & REGISTRO) ---
+
+// LOGIN
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const query = `
             SELECT u.id, u.name, u.email, u.password_hash, r.name as role_name, m.clinic_id 
             FROM users u
-            LEFT JOIN members m ON u.name = m.name 
+            LEFT JOIN members m ON u.id = m.user_id 
             LEFT JOIN roles r ON m.role_id = r.id
             WHERE u.email = $1
         `;
@@ -84,17 +86,37 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// --- 2. RUTAS DE MÓDULOS ---
+// REGISTRO (Añadido para el flujo de invitaciones)
+app.post('/api/auth/register', async (req, res) => {
+    const { name, email, password } = req.body;
+    try {
+        const checkUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+        if (checkUser.rows.length > 0) {
+            return res.status(400).json({ message: "El correo ya está registrado" });
+        }
+
+        const query = `
+            INSERT INTO users (name, email, password_hash, created_at)
+            VALUES ($1, $2, $3, NOW()) RETURNING id, name, email;
+        `;
+        const { rows } = await pool.query(query, [name, email, password]);
+        res.status(201).json({ success: true, user: rows[0] });
+    } catch (err) {
+        console.error("❌ Error en Registro:", err);
+        res.status(500).json({ message: "Error al crear la cuenta" });
+    }
+});
+
+// --- 2. RUTAS DE MÓDULOS (Routers Externos) ---
 app.use('/api/patients', patientRouter);
 app.use('/api/clinics', clinicRouter);
 app.get('/api/roles', getRoles);
 
-// --- 3. GESTIÓN DE INVITACIONES (UNIFICADO) ---
+// --- 3. GESTIÓN DE INVITACIONES ---
+// Este endpoint genera el correo que diseñamos
 app.post('/api/clinics/:id/invitations', async (req, res) => {
     const { id: clinic_id } = req.params;
     const { email, role_id, invited_by } = req.body;
-
-    console.log("📩 Intento de invitación para Clínica:", clinic_id, "Email:", email);
 
     if (!email || !role_id) {
         return res.status(400).json({ message: "Email y Nivel de gobernanza son obligatorios" });
@@ -116,35 +138,35 @@ app.post('/api/clinics/:id/invitations', async (req, res) => {
 
         const { rows } = await req.pool.query(query, values);
 
-        // Email en segundo plano
+        // Envío de Email con link dinámico
         const mailOptions = {
             from: `"Adaptia" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: 'Invitación a colaborar en Adaptia',
             html: `
-                <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 20px; max-width: 400px; margin: auto;">
+                    <div style="background: #50e3c2; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                        <span style="font-weight: bold; font-size: 20px;">A</span>
+                    </div>
                     <h2 style="color: #101828;">¡Hola!</h2>
-                    <p>Has sido invitado a unirte a una red profesional en <strong>Adaptia</strong>.</p>
+                    <p style="color: #374151;">Has sido invitado a unirte a la red profesional de <strong>Adaptia</strong>.</p>
                     <div style="margin: 30px 0;">
-                        <a href="http://localhost:5173/register?email=${email}" 
-                           style="background: #101828; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                           Aceptar Invitación y Registrarse
+                        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/register?token=${rows[0].id}&email=${email}" 
+                           style="background: #101828; color: #50e3c2; padding: 14px 25px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">
+                           Aceptar Invitación
                         </a>
                     </div>
+                    <p style="font-size: 12px; color: #6b7280;">Si no esperabas este correo, puedes ignorarlo.</p>
                 </div>
             `
         };
 
         transporter.sendMail(mailOptions).catch(e => console.error("⚠️ Error mailer:", e.message));
-
         res.status(201).json({ success: true, data: rows[0] });
 
     } catch (err) {
-        console.error("❌ ERROR DB DETALLE:", err.message);
-        res.status(400).json({
-            message: "La base de datos rechazó la invitación",
-            error: err.message
-        });
+        console.error("❌ Error en Invitación:", err.message);
+        res.status(400).json({ message: "Error al procesar la invitación" });
     }
 });
 
@@ -181,13 +203,12 @@ app.post('/api/clinical-notes', async (req, res) => {
     }
 });
 
-// --- 5. CITAS CON GOBERNANZA (CORREGIDO) ---
+// --- 5. CITAS CON GOBERNANZA ---
 app.get(['/api/appointments', '/api/appointments/all'], async (req, res) => {
     try {
         const viewerMemberId = 1;
         const clinicId = 1;
 
-        // Obtenemos el filtro. IMPORTANTE: Los parámetros dentro del filtro deben empezar desde $2
         const filter = await getResourceFilter(req.pool, viewerMemberId, clinicId, 'appointments');
 
         const query = `
@@ -198,7 +219,6 @@ app.get(['/api/appointments', '/api/appointments/all'], async (req, res) => {
             ORDER BY a.date DESC
         `;
 
-        // Pasamos clinicId como $1, y luego desestructuramos el resto de parámetros del filtro ($2, $3...)
         const { rows } = await pool.query(query, [clinicId, ...filter.params]);
         res.json({ data: rows || [] });
     } catch (err) {

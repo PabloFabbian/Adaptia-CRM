@@ -27,10 +27,10 @@ function App() {
 
   if (loading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-white dark:bg-dark-bg transition-colors duration-500">
+      <div className="h-screen flex flex-col items-center justify-center bg-white dark:bg-[#101828] transition-colors duration-500">
         <div className="flex flex-col items-center gap-6">
-          <div className="w-12 h-12 border-4 border-adaptia-blue/20 border-t-adaptia-blue rounded-full animate-spin" />
-          <div className="text-gray-400 dark:text-gray-500 font-medium italic animate-pulse tracking-widest text-xs uppercase">
+          <div className="w-12 h-12 border-4 border-[#50e3c2]/20 border-t-[#50e3c2] rounded-full animate-spin" />
+          <div className="text-gray-400 dark:text-gray-500 font-medium italic animate-pulse tracking-[0.2em] text-[10px] uppercase">
             Sincronizando con Adaptia Cloud...
           </div>
         </div>
@@ -50,21 +50,26 @@ function App() {
             borderRadius: '1.25rem',
             padding: '1rem',
             background: 'var(--toast-bg)',
+            border: '1px solid var(--border-color)',
           },
         }}
       />
 
       <Routes>
+        {/* 1. RUTA DE REGISTRO/INVITACIÓN (Siempre accesible)
+            La dejamos fuera para que, si hay un token, el componente Login
+            pueda procesarlo independientemente del estado de auth. */}
+        <Route path="/register" element={<Login />} />
+
         {!user ? (
+          /* 2. FLUJO PÚBLICO (No logueado) */
           <>
-            {/* Manejamos tanto /login como /register (invitaciones) 
-                con el mismo componente Auth/Login 
-            */}
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Login />} />
+            {/* Si no estás logueado y vas a cualquier otra ruta, al login */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </>
         ) : (
+          /* 3. FLUJO PRIVADO (Logueado) */
           <Route path="/" element={<Layout />}>
             {/* VISTA PRINCIPAL */}
             <Route index element={<Dashboard user={user} appointments={appointments} />} />
@@ -77,7 +82,7 @@ function App() {
               <Route path="nuevo" element={<NewPatient />} />
             </Route>
 
-            {/* ACCESO DIRECTO: Crear nuevo paciente */}
+            {/* ACCESO DIRECTO */}
             <Route path="nuevo-paciente" element={<NewPatient />} />
 
             {/* GESTIÓN OPERATIVA */}
@@ -94,13 +99,13 @@ function App() {
             <Route path="categorias" element={<CategoriesPage />} />
 
             {/* ACCESOS RÁPIDOS */}
-            <Route path="agendar" element={<PlaceholderPage title="Agendar Cita" icon={PlusCircle} color="bg-blue-500" />} />
+            <Route path="agendar" element={<PlaceholderPage title="Agendar Cita" icon={PlusCircle} color="bg-[#50e3c2]" />} />
             <Route path="registrar-gasto" element={<PlaceholderPage title="Registrar Gasto" icon={Wallet} color="bg-red-500" />} />
             <Route path="papelera" element={<PlaceholderPage title="Papelera" icon={Trash2} color="bg-gray-700" />} />
 
-            {/* SEGURIDAD & FALLBACK */}
+            {/* REDIRECCIONES DE SEGURIDAD PARA LOGUEADOS */}
             <Route path="login" element={<Navigate to="/" replace />} />
-            <Route path="register" element={<Navigate to="/" replace />} />
+            {/* Si ya estás logueado y entras a la raíz o rutas inexistentes */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         )}

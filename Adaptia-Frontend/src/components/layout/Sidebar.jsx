@@ -66,7 +66,7 @@ export const Sidebar = () => {
     const navProps = { currentRoleId: roleId, hasContext };
 
     return (
-        <aside className="w-64 h-screen flex flex-col overflow-hidden bg-white dark:bg-[#0f172a] border-r border-gray-100 dark:border-white/5 relative z-10">
+        <aside className="w-64 h-screen flex flex-col overflow-hidden bg-white dark:bg-[#181d27] border-r border-adaptia-mint dark:border-adaptia-mint/20 relative z-10">
             {/* LOGO */}
             <div className="pt-8 pb-6 px-7">
                 <Link to="/" className="block transition-transform duration-300 hover:scale-[1.02]">

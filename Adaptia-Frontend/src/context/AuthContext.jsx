@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
 
     const API_BASE_URL = 'http://localhost:3001';
 
-    // 1. Obtener permisos desde el backend
+    /** 1. Obtener permisos de capacidades */
     const fetchMyPermissions = useCallback(async (roleId, clinicId) => {
         if (roleId === undefined || roleId === null || !clinicId) return;
 
@@ -26,8 +26,6 @@ export const AuthProvider = ({ children }) => {
 
             const capabilities = await response.json();
 
-            // Normalizamos los permisos a un array de strings (slugs)
-            // Esto permite hacer: userPermissions.includes('patients.read')
             const permissions = capabilities.map(c => {
                 const slug = c.slug || c.capability?.slug || c;
                 return typeof slug === 'string' ? slug.toLowerCase() : slug;
@@ -41,7 +39,53 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
-    // 2. Cambiar de clínica
+    /** 2. Sincronizar Soberanía y member_id 
+     * MEJORA: Acepta un explicitToken para evitar el error 401 durante el login
+     */
+    const refreshUser = useCallback(async (explicitToken = null) => {
+        // Buscamos el token en orden de prioridad
+        const savedUserRaw = localStorage.getItem('adaptia_user');
+        let token = explicitToken || localStorage.getItem('adaptia_token') || localStorage.getItem('token');
+
+        if (!token && savedUserRaw) {
+            try {
+                token = JSON.parse(savedUserRaw)?.token;
+            } catch (e) { token = null; }
+        }
+
+        if (!token) return;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/clinics/me/sovereignty`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) console.warn("⚠️ Token expirado o inválido en refreshUser");
+                throw new Error('Error al obtener soberanía');
+            }
+
+            const data = await response.json();
+
+            setUser(prev => {
+                const updatedUser = {
+                    ...prev,
+                    member_id: data.member_id,
+                    consents: data.consents
+                };
+                localStorage.setItem('adaptia_user', JSON.stringify(updatedUser));
+                return updatedUser;
+            });
+
+        } catch (error) {
+            console.error("❌ [AuthContext] refreshUser failed:", error.message);
+        }
+    }, []);
+
+    /** 3. Cambiar de clínica */
     const switchClinic = useCallback(async (membership) => {
         if (!membership) return;
 
@@ -56,9 +100,12 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('adaptia_active_clinic', JSON.stringify(clinicData));
 
         await fetchMyPermissions(clinicData.role_id, clinicData.id);
-    }, [fetchMyPermissions]);
+        await refreshUser();
+    }, [fetchMyPermissions, refreshUser]);
 
-    // 3. Login
+    /** 4. Login 
+     * MEJORA: Sincronización inmediata de estados
+     */
     const login = async (userData) => {
         try {
             const clinicRole = userData.activeClinic?.role_id;
@@ -74,9 +121,14 @@ export const AuthProvider = ({ children }) => {
                 memberships: memberships
             };
 
+            // 1. Persistencia inmediata
             setUser(normalizedUser);
             localStorage.setItem('adaptia_user', JSON.stringify(normalizedUser));
+            if (userData.token) {
+                localStorage.setItem('adaptia_token', userData.token);
+            }
 
+            // 2. Configurar clínica activa
             if (userData.activeClinic) {
                 const clinicData = {
                     ...userData.activeClinic,
@@ -84,7 +136,12 @@ export const AuthProvider = ({ children }) => {
                 };
                 setActiveClinic(clinicData);
                 localStorage.setItem('adaptia_active_clinic', JSON.stringify(clinicData));
-                await fetchMyPermissions(clinicData.role_id, clinicData.id);
+
+                // 3. Cargas en paralelo para velocidad
+                await Promise.all([
+                    fetchMyPermissions(clinicData.role_id, clinicData.id),
+                    refreshUser(userData.token) // <--- Pasamos el token directamente aquí
+                ]);
             }
 
             return normalizedUser;
@@ -94,7 +151,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // 4. Inicialización
+    /** 5. Inicialización */
     useEffect(() => {
         const initAuth = async () => {
             try {
@@ -113,8 +170,8 @@ export const AuthProvider = ({ children }) => {
 
                         if (savedPerms) setUserPermissions(JSON.parse(savedPerms));
 
-                        // Re-validamos permisos con el servidor para estar seguros
-                        fetchMyPermissions(clinic.role_id, clinic.id);
+                        await fetchMyPermissions(clinic.role_id, clinic.id);
+                        await refreshUser();
                     }
                 }
             } catch (error) {
@@ -124,9 +181,9 @@ export const AuthProvider = ({ children }) => {
             }
         };
         initAuth();
-    }, [fetchMyPermissions]);
+    }, [fetchMyPermissions, refreshUser]);
 
-    // 5. Logout
+    /** 6. Logout */
     const logout = () => {
         setUser(null);
         setActiveClinic(null);
@@ -135,24 +192,13 @@ export const AuthProvider = ({ children }) => {
         window.location.href = '/login';
     };
 
-    // --- NUEVOS HELPERS DE GOBERNANZA ---
-
-    /**
-     * Comprueba si el usuario tiene una capacidad específica (Permiso Fino)
-     * @param {string} permission - El slug del permiso (ej: 'patients.write')
-     * @returns {boolean}
-     */
+    /** 7. Helpers de Gobernanza */
     const can = useCallback((permission) => {
         if (!permission) return false;
-        // El Tech Owner (Rol 0) suele saltarse las validaciones de permisos finos
         if (Number(activeClinic?.role_id) === 0) return true;
-
         return userPermissions.includes(permission.toLowerCase());
     }, [userPermissions, activeClinic]);
 
-    /**
-     * Verifica roles (Permiso Grueso)
-     */
     const hasRole = useCallback((roleIdentifiers) => {
         if (!activeClinic) return false;
         const identifiers = Array.isArray(roleIdentifiers) ? roleIdentifiers : [roleIdentifiers];
@@ -167,15 +213,8 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={{
-            user,
-            login,
-            logout,
-            loading,
-            activeClinic,
-            userPermissions,
-            switchClinic,
-            hasRole,
-            can // <--- Exportamos la nueva función
+            user, login, logout, loading, activeClinic,
+            userPermissions, switchClinic, hasRole, can, refreshUser
         }}>
             {!loading && children}
         </AuthContext.Provider>

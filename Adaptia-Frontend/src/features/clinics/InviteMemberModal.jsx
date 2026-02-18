@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { Mail, Shield, X, Loader2, Send, CheckCircle2, ChevronDown } from 'lucide-react';
-import { Button } from '../../../components/ui/Button';
-import { Card } from '../../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 
 export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
     const { user, activeClinic } = useAuth();

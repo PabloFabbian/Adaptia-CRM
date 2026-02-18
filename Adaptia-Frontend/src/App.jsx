@@ -7,11 +7,11 @@ import { Toaster } from 'sonner';
 // --- PÁGINAS ---
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
+import SovereigntyPage from './pages/SovereigntyPage'; // <-- Nueva Importación
 import { PatientsPage } from './pages/PatientsPage';
 import { PatientHistoryPage } from './pages/PatientHistoryPage';
-import { AppointmentsPage } from './pages/AppointmentsPage';
 import { CalendarPage } from './pages/CalendarPage';
-import { BookingPage } from './pages/BookingPage'; // <-- Nueva página
+import { BookingPage } from './pages/BookingPage';
 import { BillingPage } from './pages/BillingPage';
 import { CategoriesPage } from './pages/SystemPages';
 import Clinics from './pages/Clinics';
@@ -20,25 +20,25 @@ import { Login } from './pages/Login';
 
 // --- UI & ICONS ---
 import { PlaceholderPage } from './components/ui/PlaceholderPage';
-import { Wallet, Trash2 } from 'lucide-react';
+import { Trash2, HeartHandshake, ClipboardList } from 'lucide-react';
 
 const ProtectedRoute = ({ children, permission }) => {
-  const { user, userPermissions, hasRole } = useAuth();
-  const isAuthorized = hasRole(['Tech Owner', 'Owner']) || userPermissions?.includes(permission);
+  const { can, loading } = useAuth();
+  if (loading) return null;
 
-  if (!isAuthorized) {
+  if (permission && !can(permission)) {
     return <Navigate to="/" replace />;
   }
   return children;
 };
 
 function App() {
-  const { user, loading, userPermissions } = useAuth();
+  const { user, loading } = useAuth();
   const { appointments, fetchAppointments } = useAppointments();
 
   if (loading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-white dark:bg-[#101828] transition-colors duration-500">
+      <div className="h-screen flex flex-col items-center justify-center bg-white dark:bg-[#101828]">
         <div className="flex flex-col items-center gap-6">
           <div className="w-12 h-12 border-4 border-[#50e3c2]/20 border-t-[#50e3c2] rounded-full animate-spin" />
           <div className="text-gray-400 dark:text-gray-500 font-medium italic animate-pulse tracking-[0.2em] text-[10px] uppercase">
@@ -51,24 +51,9 @@ function App() {
 
   return (
     <Router>
-      <Toaster
-        position="top-right"
-        expand={false}
-        richColors
-        closeButton
-        toastOptions={{
-          style: {
-            borderRadius: '1.25rem',
-            padding: '1rem',
-            background: 'var(--toast-bg)',
-            border: '1px solid var(--border-color)',
-          },
-        }}
-      />
-
+      <Toaster position="top-right" richColors closeButton />
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
-        <Route path="/register" element={<Login />} />
 
         {!user ? (
           <Route path="*" element={<Navigate to="/login" replace />} />
@@ -76,41 +61,54 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard user={user} appointments={appointments} />} />
 
-            {/* PACIENTES */}
+            {/* SECCIÓN CLÍNICA */}
             <Route path="pacientes" element={
-              <ProtectedRoute permission="clinic.patients.read">
+              <ProtectedRoute permission="patients.read">
                 <PatientsPage />
               </ProtectedRoute>
             } />
             <Route path="pacientes/:id/historial" element={<PatientHistoryPage />} />
-            <Route path="pacientes/nuevo" element={<NewPatient />} />
-            <Route path="nuevo-paciente" element={<NewPatient />} />
-
-            {/* CALENDARIO Y AGENDA */}
-            <Route path="citas" element={
-              <ProtectedRoute permission="clinic.appointments.read">
-                <AppointmentsPage />
+            <Route path="nuevo-paciente" element={
+              <ProtectedRoute permission="patients.write">
+                <NewPatient />
               </ProtectedRoute>
             } />
             <Route path="calendario" element={<CalendarPage />} />
-            <Route path="agendar" element={<BookingPage />} /> {/* <-- Cal.com aquí */}
+            <Route path="agendar" element={<BookingPage />} />
 
-            {/* SISTEMA Y FINANZAS */}
+            <Route path="notas" element={
+              <ProtectedRoute permission="clinical_notes.read">
+                <PlaceholderPage title="Notas Clínicas" icon={ClipboardList} />
+              </ProtectedRoute>
+            } />
+
+            {/* SECCIÓN SOBERANÍA (Actualizada) */}
+            <Route path="mis-permisos" element={
+              <ProtectedRoute permission="clinic.resources.manage">
+                {/* Ahora usamos la página real y le pasamos la lógica de refresco */}
+                <SovereigntyPage fetchAppointments={fetchAppointments} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="supervision" element={
+              <PlaceholderPage title="Espacio de Supervisión" icon={HeartHandshake}
+                description="Módulo para compartir casos de forma anónima con supervisores." />
+            } />
+
+            {/* ADMINISTRACIÓN */}
             <Route path="facturacion" element={
-              <ProtectedRoute permission="clinic.settings.read">
+              <ProtectedRoute permission="clinic.billing.read">
                 <BillingPage mode="list" />
               </ProtectedRoute>
             } />
-            <Route path="clinicas" element={
-              <ProtectedRoute permission="clinic.settings.read">
-                <Clinics />
-              </ProtectedRoute>
-            } />
-            <Route path="settings" element={<Settings fetchAppointments={fetchAppointments} />} />
-            <Route path="categorias" element={<CategoriesPage />} />
 
-            {/* ACCESOS RÁPIDOS */}
-            <Route path="registrar-gasto" element={<PlaceholderPage title="Registrar Gasto" icon={Wallet} color="bg-red-500" />} />
+            {/* SISTEMA */}
+            <Route path="clinicas" element={<Clinics />} />
+
+            {/* Settings ahora es más simple, no necesita props de carga de citas */}
+            <Route path="settings" element={<Settings />} />
+
+            <Route path="categorias" element={<CategoriesPage />} />
             <Route path="papelera" element={<PlaceholderPage title="Papelera" icon={Trash2} color="bg-gray-700" />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

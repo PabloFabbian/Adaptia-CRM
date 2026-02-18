@@ -12,11 +12,15 @@ import appointmentRouter from './src/appointments/appointments.js';
 const app = express();
 
 // --- 1. MIDDLEWARES ---
+
+// Configuración de CORS robusta para evitar el "NetworkError"
 app.use(cors({
-    origin: '*',
+    origin: true, // Permite cualquier origen dinámicamente o puedes poner 'http://localhost:5173'
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    credentials: true // Vital si decides usar cookies o sesiones en el futuro
 }));
+
 app.use(express.json());
 
 // Inyectar pool en cada request para que los controladores lo usen
@@ -32,13 +36,17 @@ pool.query(createDatabaseSchema)
 
 // --- 2. RUTAS DE AUTENTICACIÓN ---
 
+/**
+ * LOGIN: Ahora incluye el token de forma explícita para que el Front 
+ * no falle al intentar leer 'refreshUser'
+ */
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const query = `
             SELECT 
                 u.id, u.name, u.email, u.password_hash, 
-                m.role_id,           -- <--- AGREGADO: ID numérico vital para el Sidebar
+                m.role_id, 
                 r.name as role_name, 
                 m.clinic_id,
                 c.name as clinic_name
@@ -47,23 +55,28 @@ app.post('/api/auth/login', async (req, res) => {
             LEFT JOIN roles r ON m.role_id = r.id
             LEFT JOIN clinics c ON m.clinic_id = c.id
             WHERE u.email = $1
-            ORDER BY m.role_id ASC -- <--- TRUCO: Trae el rol con más poder primero (0 es menor que 6)
+            ORDER BY m.role_id ASC 
             LIMIT 1; 
         `;
         const { rows } = await pool.query(query, [email]);
 
         if (rows.length > 0 && rows[0].password_hash === password) {
             const user = rows[0];
+
+            // SIMULACIÓN DE TOKEN: 
+            // Si no usas JWT aún, enviamos un string para que el AuthContext no de error de "Token no encontrado"
+            const dummyToken = `session_token_${user.id}_${Date.now()}`;
+
             return res.json({
                 user: {
                     id: user.id,
                     name: user.name,
                     email: user.email,
-                    // Enviamos los datos para que el AuthContext los reconozca
+                    token: dummyToken, // <--- CRÍTICO: Para que refreshUser() funcione
                     activeClinic: user.clinic_id ? {
                         id: user.clinic_id,
                         name: user.clinic_name,
-                        role_id: user.role_id,   // <--- AHORA SÍ LLEGA AL FRONT
+                        role_id: user.role_id,
                         role_name: user.role_name
                     } : null
                 }
@@ -76,7 +89,6 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// Ruta de registro (necesaria para el flujo de invitaciones)
 app.post('/api/auth/register', async (req, res) => {
     const { name, email, password } = req.body;
     try {
@@ -94,9 +106,24 @@ app.post('/api/auth/register', async (req, res) => {
 // --- 3. RUTAS DE MÓDULOS ---
 app.use('/api/patients', patientRouter);
 app.use('/api/clinics', clinicRouter);
-app.use('/api/appointments', appointmentRouter); // Resuelve el error 404 de tu consola
+app.use('/api/appointments', appointmentRouter);
 
 app.get('/', (req, res) => res.send('🚀 Adaptia API Operativa'));
 
+// Manejador de errores global para que el servidor no se caiga ante errores 500
+app.use((err, req, res, next) => {
+    console.error("❌ Error No Manejado:", err.stack);
+    res.status(500).json({ message: "Algo salió mal en el servidor" });
+});
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`🚀 Servidor Adaptia corriendo en puerto ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`
+    ====================================
+    🚀 Servidor Adaptia Corriendo
+    🌐 Puerto: ${PORT}
+    🔓 CORS: Habilitado
+    ✨ DB: Neon Sincronizada
+    ====================================
+    `);
+});

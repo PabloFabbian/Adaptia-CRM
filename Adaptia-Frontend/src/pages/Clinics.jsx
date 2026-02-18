@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useClinics } from '../hooks/useClinics';
 import { Tabs } from '../components/ui/Tabs';
-import { InviteMemberModal } from '../features/clinics/components/InviteMemberModal';
+import { InviteMemberModal } from '../features/clinics/InviteMemberModal';
 import {
     Home, Users, Calendar, Settings, UserPlus, Layout,
     ShieldCheck, Activity, Mail, Lock,

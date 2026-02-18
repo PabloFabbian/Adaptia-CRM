@@ -20,7 +20,7 @@ export const getClinicDirectory = async (req, res) => {
         const membersQuery = `
             SELECT m.id, m.name, u.email, r.name as role_name, m.user_id,
                 COALESCE(
-                    (SELECT json_agg(json_build_object('type', c.resource_type, 'granted', c.is_granted))
+                    (SELECT json_agg(json_build_object('type', c.resource_type, 'is_granted', c.is_granted))
                     FROM consents c WHERE c.member_id = m.id), '[]'
                 ) as consents
             FROM members m 
@@ -71,7 +71,7 @@ export const getGovernance = async (req, res) => {
     }
 };
 
-/** 3. Crear y Enviar Invitación */
+/** 3. Crear y Enviar Invitación (Mantiene soporte JSX para Email) */
 export const createInvitation = async (req, res) => {
     const { clinicId } = req.params;
     const { email, role_id, invited_by } = req.body;
@@ -110,10 +110,9 @@ export const createInvitation = async (req, res) => {
     }
 };
 
-/** 4. Catálogo de Capacidades (Sincronizado con Neon) */
+/** 4. Catálogo de Capacidades */
 export const getAllCapabilities = async (req, res) => {
     try {
-        // Corregido: Usamos pool directamente en lugar de req.pool
         const { rows } = await pool.query(`SELECT id, slug FROM capabilities ORDER BY slug ASC`);
 
         const capabilitiesWithNames = rows.map(cap => ({
@@ -131,7 +130,7 @@ export const getAllCapabilities = async (req, res) => {
     }
 };
 
-/** 5. Toggle de Permisos por Rol (Gobernanza) */
+/** 5. Toggle de Permisos por Rol */
 export const toggleRolePermission = async (req, res) => {
     const { role_name, capability_id, action } = req.body;
     try {
@@ -152,26 +151,34 @@ export const toggleRolePermission = async (req, res) => {
     }
 };
 
-/** 6. Toggle de Consentimiento Individual (Soberanía de Datos) */
+/** 6. Toggle de Consentimiento Individual */
 export const toggleMemberConsent = async (req, res) => {
     const { memberId } = req.params;
-    const { resource_slug, granted } = req.body;
+    const { resourceType, is_granted } = req.body;
+
     try {
+        const mId = parseInt(memberId);
+        if (isNaN(mId)) return res.status(400).json({ error: 'ID de miembro inválido' });
+
         const query = `
             INSERT INTO consents (member_id, resource_type, is_granted, clinic_id)
             VALUES ($1, $2, $3, (SELECT clinic_id FROM members WHERE id = $1))
             ON CONFLICT (member_id, resource_type, clinic_id) 
             DO UPDATE SET is_granted = EXCLUDED.is_granted
+            RETURNING *;
         `;
-        await pool.query(query, [memberId, resource_slug, granted]);
+
+        const boolVal = is_granted === true || is_granted === 'true' || is_granted === 1;
+        await pool.query(query, [mId, resourceType, boolVal]);
+
         res.json({ success: true });
     } catch (error) {
-        console.error('❌ Error en toggleMemberConsent:', error);
+        console.error('❌ Error en toggleMemberConsent:', error.message);
         res.status(500).json({ error: 'Error al actualizar soberanía' });
     }
 };
 
-/** 7. Obtener Capacidades específicas de un Rol (Para el AuthContext) */
+/** 7. Obtener Capacidades específicas de un Rol */
 export const getCapabilitiesByRole = async (req, res) => {
     const { roleId } = req.params;
     try {
@@ -182,11 +189,38 @@ export const getCapabilitiesByRole = async (req, res) => {
             WHERE rc.role_id = $1
         `;
         const { rows } = await pool.query(query, [roleId]);
-
-        const slugs = rows.map(row => row.slug);
-        res.json(slugs);
+        res.json(rows.map(row => row.slug));
     } catch (error) {
         console.error('❌ Error en getCapabilitiesByRole:', error);
         res.status(500).json({ error: 'Error al obtener capacidades del rol' });
+    }
+};
+
+/** 8. Obtener Estado Actual del Usuario Sesión (Sincronizado) */
+export const getMySovereigntyStatus = async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'No autorizado' });
+
+    try {
+        const query = `
+            SELECT m.id as member_id, m.clinic_id,
+                COALESCE(
+                    (SELECT json_agg(json_build_object('type', c.resource_type, 'is_granted', c.is_granted))
+                    FROM consents c WHERE c.member_id = m.id), '[]'
+                ) as consents
+            FROM members m 
+            WHERE m.user_id = $1
+            LIMIT 1
+        `;
+        const { rows } = await pool.query(query, [userId]);
+
+        if (!rows.length) {
+            return res.json({ member_id: null, clinic_id: null, consents: [] });
+        }
+
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('❌ Error en getMySovereigntyStatus:', error);
+        res.status(500).json({ error: 'Error al obtener estado' });
     }
 };

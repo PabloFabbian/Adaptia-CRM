@@ -9,7 +9,7 @@ export const CAPABILITIES = {
  * y Consentimiento/Soberanía (Nivel 2).
  */
 export const getResourceFilter = async (pool, viewerUserId, clinicId, resourceType) => {
-    // Mapeo de recurso al slug de capacidad y al nombre de recurso en la tabla 'consents'
+    // Mapeo exacto entre frontend y backend
     const resourceMap = {
         'appointments': { cap: CAPABILITIES.READ_APPOINTMENTS, consentKey: 'appointments' },
         'patients': { cap: CAPABILITIES.READ_PATIENTS, consentKey: 'patients' },
@@ -17,6 +17,8 @@ export const getResourceFilter = async (pool, viewerUserId, clinicId, resourceTy
     };
 
     const config = resourceMap[resourceType];
+    // Seguridad: si el recurso no existe, bloqueamos todo.
+    if (!config) return { query: `FALSE`, params: [] };
 
     try {
         // 1. Obtener el ID de Miembro del que está mirando (viewer)
@@ -26,9 +28,10 @@ export const getResourceFilter = async (pool, viewerUserId, clinicId, resourceTy
         );
         const viewerMemberId = viewerMemberRes.rows[0]?.id;
 
+        // Si no es miembro de la clínica, no ve nada.
         if (!viewerMemberId) return { query: `FALSE`, params: [] };
 
-        // 2. Verificar si el viewer tiene la CAPACIDAD técnica en su ROL (Nivel 1)
+        // 2. Verificar capacidad técnica del ROL (Nivel 1)
         const capsRes = await pool.query(`
             SELECT 1 FROM role_capabilities rc
             JOIN members m ON m.role_id = rc.role_id
@@ -39,14 +42,13 @@ export const getResourceFilter = async (pool, viewerUserId, clinicId, resourceTy
 
         const hasGlobalCapability = capsRes.rowCount > 0;
 
-        // 3. CONSTRUCCIÓN DEL FILTRO DE SOBERANÍA
-        // Un miembro ve un recurso si:
-        // A) Es el dueño (propietario) del recurso.
-        // B) TIENE la capacidad técnica Y el dueño ha dado CONSENTIMIENTO a la clínica.
-
+        /**
+         * 3. FILTRO DE SOBERANÍA:
+         * El viewer verá el registro 'a' (appointment) si:
+         * - Es el dueño (owner_member_id = viewerMemberId)
+         * - TIENE permiso de rol Y el dueño ha dado consentimiento (is_granted = TRUE)
+         */
         if (hasGlobalCapability) {
-            // Caso: Tiene permiso de rol. Ve lo suyo + lo compartido.
-            // Sincronizamos: $1=clinicId, $2=viewerMemberId, $3=consentKey
             return {
                 query: `(
                     a.owner_member_id = $2 
@@ -61,8 +63,7 @@ export const getResourceFilter = async (pool, viewerUserId, clinicId, resourceTy
                 params: [clinicId, viewerMemberId, config.consentKey]
             };
         } else {
-            // Caso: No tiene capacidad en su rol. SOLO ve lo suyo.
-            // Sincronizamos: $1=clinicId (aunque no se use aquí, mantenemos estructura), $2=viewerMemberId
+            // Caso restrictivo: No tiene permiso de rol, solo ve lo propio.
             return {
                 query: `a.owner_member_id = $2`,
                 params: [clinicId, viewerMemberId]
@@ -71,6 +72,6 @@ export const getResourceFilter = async (pool, viewerUserId, clinicId, resourceTy
 
     } catch (error) {
         console.error("❌ Error en getResourceFilter:", error);
-        return { query: `FALSE`, params: [] }; // Bloqueo preventivo ante error
+        return { query: `FALSE`, params: [] };
     }
 };

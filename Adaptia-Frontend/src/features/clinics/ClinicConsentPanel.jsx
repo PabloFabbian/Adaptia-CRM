@@ -1,5 +1,5 @@
 import { ShieldCheck, UserCheck } from 'lucide-react';
-import { PermissionToggle } from './PermissionToggle';
+import { PermissionToggle } from './components/PermissionToggle';
 
 export const ClinicConsentPanel = ({ member }) => {
     if (!member) return null;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Shield, Lock } from 'lucide-react';
-import { useClinics } from '../../../hooks/useClinics';
+import { useClinics } from '../../hooks/useClinics';
 import { PermissionToggle } from './PermissionToggle';
 
 export const RoleManager = ({ clinicId }) => {

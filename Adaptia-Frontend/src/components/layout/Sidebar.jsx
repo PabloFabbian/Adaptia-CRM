@@ -2,24 +2,19 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ClinicSelector } from './ClinicSelector';
 import { ROLE, NAV_PERMISSIONS } from '../../constants/roles';
-import { Can } from '../../components/auth/Can';
 import {
-    Home, Users, Calendar, Clock, CreditCard,
+    Home, Users, Calendar, CreditCard,
     Building2, PlusCircle, UserPlus, Receipt,
-    Settings, Layers, Trash2, MessageSquare, Wallet,
-    ChevronRight
+    Settings, Layers, Trash2, MessageSquare, Wallet
 } from 'lucide-react';
 
-// --- NAVITEM CON LÓGICA DE ACCESO Y CONTEXTO ---
 const NavItem = ({ to, label, icon: Icon, access = 'PUBLIC', currentRoleId, hasContext }) => {
     const location = useLocation();
     const active = location.pathname === to;
 
-    // 1. Verificamos si el rol actual está incluido en los permitidos
     const allowedRoles = NAV_PERMISSIONS[access] || NAV_PERMISSIONS.PUBLIC;
     const isHidden = currentRoleId !== null && !allowedRoles.includes(currentRoleId);
 
-    // 2. Definimos si está deshabilitado (requiere clínica activa)
     const isTechOwner = currentRoleId === ROLE.TECH_OWNER;
     const isDisabled = !isTechOwner && !hasContext && to !== "/";
 
@@ -53,7 +48,6 @@ const NavItem = ({ to, label, icon: Icon, access = 'PUBLIC', currentRoleId, hasC
 
 export const Sidebar = () => {
     const { activeClinic, user, loading } = useAuth();
-    const location = useLocation();
 
     const rawRoleId = activeClinic?.role_id ?? user?.role_id;
     const roleId = (rawRoleId !== null && rawRoleId !== undefined) ? Number(rawRoleId) : null;
@@ -86,7 +80,6 @@ export const Sidebar = () => {
                     <div className="space-y-0.5">
                         <NavItem to="/" label="Inicio" icon={Home} {...navProps} />
                         <NavItem to="/pacientes" label="Pacientes" icon={Users} {...navProps} />
-                        <NavItem to="/citas" label="Citas" icon={Clock} {...navProps} />
                         <NavItem to="/calendario" label="Calendario" icon={Calendar} {...navProps} />
                         <NavItem to="/facturacion" label="Facturación" icon={CreditCard} access="MASTER" {...navProps} />
                         <NavItem to="/clinicas" label="Gobernanza" icon={Building2} access="MASTER" {...navProps} />
@@ -113,6 +106,7 @@ export const Sidebar = () => {
                 </div>
             </div>
 
+            {/* SOPORTE */}
             <div className="p-4 mt-auto border-t border-gray-50 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
                 <button className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold text-gray-400 hover:text-[#50e3c2] dark:text-gray-500 dark:hover:text-[#50e3c2] transition-all uppercase tracking-widest">
                     <MessageSquare size={16} strokeWidth={2} />

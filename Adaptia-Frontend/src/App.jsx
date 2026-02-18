@@ -11,6 +11,7 @@ import { PatientsPage } from './pages/PatientsPage';
 import { PatientHistoryPage } from './pages/PatientHistoryPage';
 import { AppointmentsPage } from './pages/AppointmentsPage';
 import { CalendarPage } from './pages/CalendarPage';
+import { BookingPage } from './pages/BookingPage'; // <-- Nueva página
 import { BillingPage } from './pages/BillingPage';
 import { CategoriesPage } from './pages/SystemPages';
 import Clinics from './pages/Clinics';
@@ -19,15 +20,10 @@ import { Login } from './pages/Login';
 
 // --- UI & ICONS ---
 import { PlaceholderPage } from './components/ui/PlaceholderPage';
-import { PlusCircle, Wallet, Trash2 } from 'lucide-react';
+import { Wallet, Trash2 } from 'lucide-react';
 
-/**
- * Componente para proteger rutas basadas en permisos (capabilities)
- */
 const ProtectedRoute = ({ children, permission }) => {
   const { user, userPermissions, hasRole } = useAuth();
-
-  // Si es Tech Owner o tiene el permiso específico, pasa.
   const isAuthorized = hasRole(['Tech Owner', 'Owner']) || userPermissions?.includes(permission);
 
   if (!isAuthorized) {
@@ -71,60 +67,52 @@ function App() {
       />
 
       <Routes>
-        {/* 1. FLUJO PÚBLICO */}
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
         <Route path="/register" element={<Login />} />
 
         {!user ? (
           <Route path="*" element={<Navigate to="/login" replace />} />
         ) : (
-          /* 2. FLUJO PRIVADO (Logueado) */
           <Route path="/" element={<Layout />}>
-            {/* VISTA PRINCIPAL */}
             <Route index element={<Dashboard user={user} appointments={appointments} />} />
 
-            {/* GESTIÓN DE PACIENTES - Protegida por Read */}
+            {/* PACIENTES */}
             <Route path="pacientes" element={
               <ProtectedRoute permission="clinic.patients.read">
                 <PatientsPage />
               </ProtectedRoute>
             } />
-
             <Route path="pacientes/:id/historial" element={<PatientHistoryPage />} />
             <Route path="pacientes/nuevo" element={<NewPatient />} />
             <Route path="nuevo-paciente" element={<NewPatient />} />
 
-            {/* GESTIÓN OPERATIVA */}
+            {/* CALENDARIO Y AGENDA */}
             <Route path="citas" element={
               <ProtectedRoute permission="clinic.appointments.read">
                 <AppointmentsPage />
               </ProtectedRoute>
             } />
             <Route path="calendario" element={<CalendarPage />} />
+            <Route path="agendar" element={<BookingPage />} /> {/* <-- Cal.com aquí */}
 
-            {/* FINANZAS - Solo para gestión alta */}
+            {/* SISTEMA Y FINANZAS */}
             <Route path="facturacion" element={
               <ProtectedRoute permission="clinic.settings.read">
                 <BillingPage mode="list" />
               </ProtectedRoute>
             } />
-
-            {/* CONFIGURACIÓN Y SOBERANÍA */}
             <Route path="clinicas" element={
               <ProtectedRoute permission="clinic.settings.read">
                 <Clinics />
               </ProtectedRoute>
             } />
-
             <Route path="settings" element={<Settings fetchAppointments={fetchAppointments} />} />
             <Route path="categorias" element={<CategoriesPage />} />
 
             {/* ACCESOS RÁPIDOS */}
-            <Route path="agendar" element={<PlaceholderPage title="Agendar Cita" icon={PlusCircle} color="bg-[#50e3c2]" />} />
             <Route path="registrar-gasto" element={<PlaceholderPage title="Registrar Gasto" icon={Wallet} color="bg-red-500" />} />
             <Route path="papelera" element={<PlaceholderPage title="Papelera" icon={Trash2} color="bg-gray-700" />} />
 
-            {/* FALLBACK */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         )}

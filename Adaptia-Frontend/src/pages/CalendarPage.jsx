@@ -17,6 +17,10 @@ export const CalendarPage = () => {
 
     const isSecretaria = user?.role === 'Secretaría' || user?.role === 'admin';
 
+    useEffect(() => {
+        setIsLoading(true);
+    }, [isDarkMode]);
+
     const calendarUrl = useMemo(() => {
         const bgColor = isDarkMode ? '1a1f2b' : 'ffffff';
         const base = `https://calendar.google.com/calendar/embed?src=pablo.fabbian@gmail.com&ctz=America%2FArgentina%2FBuenos_Aires&showPrint=0&showTabs=1&showCalendars=0&bgcolor=%23${bgColor}`;
@@ -73,7 +77,7 @@ export const CalendarPage = () => {
                         width="100%"
                         height="600px"
                         frameBorder="0"
-                        onLoad={() => setTimeout(() => setIsLoading(false), 700)}
+                        onLoad={() => setTimeout(() => setIsLoading(false), 2500)}
                         className={`transition-opacity duration-700 rounded-[1.5rem]
                             ${isLoading ? 'opacity-0' : 'opacity-100'} 
                             ${isDarkMode ? 'invert-[0.9] hue-rotate-180 contrast-[1.1] saturate-[0.8]' : 'saturate-[0.9]'}`}

@@ -5,18 +5,18 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import {
     ShieldCheck,
+    ShieldAlert,
     Lock,
     ChevronRight,
     CheckCircle2,
     Loader2,
     Building2,
-    Info
 } from 'lucide-react';
 
 export const AcceptInvitation = () => {
     const { token } = useParams();
     const navigate = useNavigate();
-    const { user, login } = useAuth(); // Usamos login para refrescar las memberships al finalizar
+    const { user, login } = useAuth();
 
     const [invitation, setInvitation] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -24,7 +24,6 @@ export const AcceptInvitation = () => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        // Validar token y obtener info de la clínica
         const fetchInvitation = async () => {
             try {
                 const res = await fetch(`${import.meta.env.VITE_API_URL}/api/invitations/validate/${token}`);
@@ -42,7 +41,7 @@ export const AcceptInvitation = () => {
 
     const handleAccept = async () => {
         if (!user) {
-            // Si no está logueado, lo mandamos a registro/login primero
+            // Sin sesión → al registro, con callback para volver aquí después
             navigate(`/register?callback=/accept-invitation/${token}`);
             return;
         }
@@ -58,9 +57,8 @@ export const AcceptInvitation = () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
 
-            // Refrescamos los datos del usuario para que el AuthContext vea la nueva clínica
-            // Aquí llamarías a una función que traiga el perfil actualizado
-            alert("¡Bienvenido a la sede! Ahora configurarás tus permisos.");
+            // Refrescamos memberships en el contexto para que vea la nueva clínica
+            await login({ ...user, ...data });
             navigate('/clinicas');
         } catch (err) {
             alert(err.message);
@@ -81,7 +79,9 @@ export const AcceptInvitation = () => {
                 <ShieldAlert className="mx-auto text-red-400 mb-4" size={48} />
                 <h1 className="text-xl font-medium text-gray-800 dark:text-white mb-2">Enlace no válido</h1>
                 <p className="text-sm text-gray-500 mb-6">{error}</p>
-                <Button onClick={() => navigate('/')} variant="secondary" className="w-full justify-center">Volver al inicio</Button>
+                <Button onClick={() => navigate('/')} variant="secondary" className="w-full justify-center">
+                    Volver al inicio
+                </Button>
             </Card>
         </div>
     );
@@ -89,7 +89,7 @@ export const AcceptInvitation = () => {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-dark-bg flex flex-col items-center justify-center p-4 animate-in fade-in duration-700">
             <div className="w-full max-w-xl">
-                {/* Brand Logo */}
+
                 <div className="flex justify-center mb-10">
                     <img src="/Logo1.png" alt="Adaptia" className="h-10 w-auto dark:brightness-110" />
                 </div>
@@ -114,8 +114,10 @@ export const AcceptInvitation = () => {
                             <div className="flex gap-4">
                                 <div className="mt-1"><CheckCircle2 className="text-emerald-500" size={18} /></div>
                                 <div>
-                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Rol asignado: {invitation.role_name}</p>
-                                    <p className="text-xs text-gray-400 font-light mt-1 text-balance italic">
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                        Rol asignado: {invitation.role_name}
+                                    </p>
+                                    <p className="text-xs text-gray-400 font-light mt-1 italic">
                                         Tendrás las capacidades de este rol una vez que la vinculación se complete.
                                     </p>
                                 </div>
@@ -126,8 +128,8 @@ export const AcceptInvitation = () => {
                                 <div>
                                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Soberanía de Datos Activa</p>
                                     <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">
-                                        Al aceptar, entrarás con todos los permisos de acceso a datos **desactivados**.
-                                        Tú decidirás manualmente qué pacientes y agendas compartir con la sede desde tu panel de control.
+                                        Al aceptar, entrarás con todos los permisos de acceso a datos desactivados.
+                                        Vos decidís manualmente qué pacientes y agendas compartir con la sede desde tu panel de control.
                                     </p>
                                 </div>
                             </div>
@@ -139,12 +141,13 @@ export const AcceptInvitation = () => {
                                 disabled={processing}
                                 className="w-full justify-center py-4 bg-gray-900 dark:bg-adaptia-blue text-white rounded-2xl shadow-lg shadow-adaptia-blue/20"
                             >
-                                {processing ? <Loader2 className="animate-spin" size={20} /> : (
-                                    <>Vincularme a esta sede <ChevronRight size={18} className="ml-2" /></>
-                                )}
+                                {processing
+                                    ? <Loader2 className="animate-spin" size={20} />
+                                    : <><span>Vincularme a esta sede</span><ChevronRight size={18} className="ml-2" /></>
+                                }
                             </Button>
                             <p className="text-center text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                                Al hacer clic, aceptas los términos de colaboración de la sede.
+                                Al hacer clic, aceptás los términos de colaboración de la sede.
                             </p>
                         </div>
                     </div>

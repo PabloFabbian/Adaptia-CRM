@@ -6,16 +6,16 @@ export const ROLE = {
 };
 
 export const NAV_PERMISSIONS = {
+    // Solo Tech Owner y Owner
     MASTER: [ROLE.TECH_OWNER, ROLE.OWNER],
+    // Tech Owner, Owner y Psicólogo
     PROFESSIONAL: [ROLE.TECH_OWNER, ROLE.OWNER, ROLE.PSICOLOGO],
-    PUBLIC: [ROLE.TECH_OWNER, ROLE.OWNER, ROLE.PSICOLOGO, ROLE.SECRETARIA]
+    // Todos
+    PUBLIC: [ROLE.TECH_OWNER, ROLE.OWNER, ROLE.PSICOLOGO, ROLE.SECRETARIA],
 };
 
 export const ACTION_PERMISSIONS = {
-    // Quién puede crear pacientes desde cero
     CREATE_PATIENT: [ROLE.TECH_OWNER, ROLE.OWNER, ROLE.SECRETARIA, ROLE.PSICOLOGO],
-    // Quién puede escribir notas clínicas (Solo dueños de registro o perfiles médicos)
     WRITE_CLINICAL_NOTES: [ROLE.TECH_OWNER, ROLE.OWNER, ROLE.PSICOLOGO],
-    // Quién puede ver la lista general
-    VIEW_PATIENTS_LIST: [ROLE.TECH_OWNER, ROLE.OWNER, ROLE.PSICOLOGO, ROLE.SECRETARIA]
+    VIEW_PATIENTS_LIST: [ROLE.TECH_OWNER, ROLE.OWNER, ROLE.PSICOLOGO, ROLE.SECRETARIA],
 };

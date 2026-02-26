@@ -36,68 +36,76 @@ const CATEGORIES = [
 ];
 
 export const CategoriesPage = () => (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[#50e3c2] rounded-xl text-gray-900 shadow-lg shadow-[#50e3c2]/20">
-                    <Layers className="w-6 h-6" />
+    <div className="max-w-7xl mx-auto px-6 pt-8 pb-20 animate-in fade-in duration-700">
+
+        {/* Header Estilo Expediente */}
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                    <div className="w-1 h-4 bg-[#50e3c2]" />
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                        Configuración de Servicios
+                    </span>
                 </div>
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Categorías</h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">Organiza las especialidades de tu clínica</p>
-                </div>
+                <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    Gestión de <span className="text-[#50e3c2]">Categorías</span>
+                </h1>
+                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                    Organiza las especialidades y servicios disponibles en tu clínica.
+                </p>
             </div>
 
-            <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 dark:bg-[#50e3c2] text-white dark:text-gray-900 rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-sm active:scale-95">
-                <Plus size={18} />
+            <button className="flex items-center gap-2 px-6 py-4 bg-slate-900 dark:bg-[#50e3c2] text-white dark:text-slate-900 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all shadow-xl hover:opacity-90 active:scale-95 shrink-0">
+                <Plus size={16} />
                 Nueva Categoría
             </button>
         </header>
 
         {/* Grid de Categorías */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {CATEGORIES.map((cat) => (
                 <div
                     key={cat.name}
-                    className="group bg-white dark:bg-[#161f31] border border-gray-100 dark:border-gray-800 rounded-[2rem] p-7 hover:shadow-2xl hover:shadow-[#50e3c2]/5 transition-all cursor-pointer relative overflow-hidden"
+                    className="group bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 hover:shadow-xl hover:shadow-[#50e3c2]/5 transition-all cursor-pointer relative overflow-hidden"
                 >
-                    {/* Decoración de fondo */}
-                    <div className={`absolute -right-4 -top-4 w-24 h-24 ${cat.bg} rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity`} />
+                    {/* Efecto de fondo sutil al hover */}
+                    <div className={`absolute -right-8 -top-8 w-32 h-32 ${cat.bg} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
                     <div className="relative">
-                        <div className="flex justify-between items-start mb-6">
-                            <div className={`p-4 ${cat.bg} ${cat.color} rounded-2xl`}>
-                                <cat.icon size={28} />
+                        <div className="flex justify-between items-start mb-8">
+                            <div className={`p-4 ${cat.bg} ${cat.color} rounded-2xl shadow-sm group-hover:scale-110 transition-transform duration-500`}>
+                                <cat.icon size={24} />
                             </div>
-                            <button className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors">
-                                <MoreVertical size={20} />
+                            <button className="p-2 text-slate-300 hover:text-slate-600 dark:hover:text-white transition-colors">
+                                <MoreVertical size={18} />
                             </button>
                         </div>
 
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{cat.name}</h3>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-8">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">{cat.name}</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-[13px] leading-relaxed mb-10 h-10 overflow-hidden line-clamp-2">
                             {cat.description}
                         </p>
 
-                        <div className="flex items-center justify-between pt-5 border-t border-gray-50 dark:border-gray-800/50">
-                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em]">
-                                {cat.services} Servicios
-                            </span>
-                            <span className={`text-[11px] font-bold ${cat.color} uppercase tracking-wider`}>
-                                Gestionar →
+                        <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-slate-700/50">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Registrados</span>
+                                <span className="text-sm font-bold text-slate-900 dark:text-white">{cat.services} Servicios</span>
+                            </div>
+
+                            <span className={`text-[10px] font-black ${cat.color} uppercase tracking-[0.15em] flex items-center gap-1 group-hover:gap-2 transition-all`}>
+                                Gestionar <span className="text-lg leading-none">→</span>
                             </span>
                         </div>
                     </div>
                 </div>
             ))}
 
-            {/* Card de "Agregar más" */}
-            <div className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-[2rem] p-8 flex flex-col items-center justify-center text-center hover:bg-gray-50 dark:hover:bg-[#50e3c2]/5 hover:border-[#50e3c2]/50 transition-all group cursor-pointer">
-                <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-[#101828] flex items-center justify-center text-gray-400 group-hover:text-[#50e3c2] transition-all mb-4">
+            {/* Card de "Agregar más" Estilo Placeholder */}
+            <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-8 flex flex-col items-center justify-center text-center hover:bg-slate-50 dark:hover:bg-[#50e3c2]/5 hover:border-[#50e3c2]/50 transition-all group cursor-pointer min-h-[280px]">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300 group-hover:text-[#50e3c2] group-hover:scale-110 transition-all mb-4 shadow-sm">
                     <Plus size={32} strokeWidth={1.5} />
                 </div>
-                <p className="text-sm font-bold text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">Añadir Especialidad</p>
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Añadir Especialidad</h4>
             </div>
         </div>
     </div>

@@ -33,7 +33,7 @@ export const BookingPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
 
                 {/* Calendario — h-full para llenar el contenedor del grid */}
-                <div className="lg:col-span-3 bg-white dark:bg-[#0F0F0F] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden relative h-[90%]">
+                <div className="lg:col-span-3 bg-[#0F0F0F] rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden relative h-[90%]">
                     {isLoading && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-white dark:bg-[#0F0F0F] z-10 text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em]">
                             <Loader2 className="w-8 h-8 text-[#50e3c2] animate-spin mb-4" />

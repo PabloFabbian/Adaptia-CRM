@@ -6,7 +6,7 @@ import { ROLE, NAV_PERMISSIONS } from '../../constants/roles';
 import {
     Home, Users, Calendar, CreditCard,
     Building2, PlusCircle, UserPlus,
-    Settings, MessageSquare,
+    Settings, MessageSquare, Tag,
     ClipboardList, HeartHandshake, ShieldCheck
 } from 'lucide-react';
 
@@ -75,7 +75,8 @@ export const Sidebar = () => {
 
     return (
         <aside className="w-64 h-screen flex flex-col overflow-hidden bg-white dark:bg-[#181d27] border-r border-[#50e3c2]/20 relative z-10">
-            {/* 1. BRANDING */}
+
+            {/* BRANDING */}
             <div className="pt-8 pb-6 px-7">
                 <Link to="/" className="block">
                     <img src="/Logo1.png" alt="Adaptia" className="h-9 w-auto object-contain dark:brightness-110" />
@@ -86,31 +87,32 @@ export const Sidebar = () => {
                 <ClinicSelector />
             </div>
 
-            {/* 2. NAVEGACIÓN (3 SECCIONES) */}
+            {/* NAVEGACIÓN */}
             <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
 
                 <NavSection title="Gestión Clínica">
-                    <NavItem to="/" label="Inicio" icon={Home} />
-                    <NavItem to="/pacientes" label="Pacientes" icon={Users} permission="patients.read" />
-                    <NavItem to="/calendario" label="Agenda y Turnos" icon={Calendar} />
-                    <NavItem to="/notas" label="Notas Clínicas" icon={ClipboardList} permission="clinical_notes.read" />
+                    <NavItem to="/" label="Inicio" icon={Home} access="PUBLIC" />
+                    <NavItem to="/pacientes" label="Pacientes" icon={Users} access="PUBLIC" permission="patients.read" />
+                    <NavItem to="/calendario" label="Agenda y Turnos" icon={Calendar} access="PUBLIC" />
+                    <NavItem to="/notas" label="Notas Clínicas" icon={ClipboardList} access="PROFESSIONAL" permission="clinical_notes.read" />
                 </NavSection>
 
                 <NavSection title="Soberanía">
-                    <NavItem to="/mis-permisos" label="Compartir Recursos" icon={ShieldCheck} permission="clinic.resources.manage" />
-                    <NavItem to="/supervision" label="Supervisión" icon={HeartHandshake} />
+                    <NavItem to="/mis-permisos" label="Compartir Recursos" icon={ShieldCheck} access="PROFESSIONAL" permission="clinic.resources.manage" />
+                    <NavItem to="/supervision" label="Supervisión" icon={HeartHandshake} access="PROFESSIONAL" />
                 </NavSection>
 
                 <NavSection title="Administración">
                     <NavItem to="/facturacion" label="Honorarios" icon={CreditCard} access="MASTER" permission="clinic.billing.read" />
                     <NavItem to="/clinicas" label="Gobernanza" icon={Building2} access="MASTER" />
-                    <NavItem to="/agendar" label="Nueva Cita" icon={PlusCircle} />
-                    <NavItem to="/nuevo-paciente" label="Alta Paciente" icon={UserPlus} access="PROFESSIONAL" permission="patients.write" />
+                    <NavItem to="/categorias" label="Categorías" icon={Tag} access="PROFESSIONAL" />
+                    <NavItem to="/agendar" label="Nueva Cita" icon={PlusCircle} access="PUBLIC" />
+                    <NavItem to="/nuevo-paciente" label="Alta Paciente" icon={UserPlus} access="PUBLIC" permission="patients.write" />
                 </NavSection>
 
             </div>
 
-            {/* 3. SISTEMA Y SOPORTE (SECCIÓN INFERIOR) */}
+            {/* SISTEMA Y SOPORTE */}
             <div className="p-4 mt-auto border-t border-gray-50 dark:border-white/5 bg-gray-50/50 dark:bg-white/[0.02]">
                 <NavItem to="/settings" label="Configuración" icon={Settings} />
                 <button className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold text-gray-400 hover:text-[#50e3c2] transition-all uppercase tracking-widest mt-1">
@@ -122,4 +124,21 @@ export const Sidebar = () => {
     );
 };
 
-//Seleccionar a mano que ROL puede ver que NAVITEM del Sidebar
+/*
+    RESUMEN DE VISIBILIDAD POR ROL
+    ════════════════════════════════════════════════════════
+    ITEM                │ Tech Owner │ Owner │ Psic │ Secr
+    ────────────────────┼────────────┼───────┼──────┼──────
+    Inicio              │     ✓      │   ✓   │  ✓   │  ✓
+    Pacientes           │     ✓      │   ✓   │  ✓   │  ✓   (+ perm patients.read)
+    Agenda y Turnos     │     ✓      │   ✓   │  ✓   │  ✓
+    Notas Clínicas      │     ✓      │   ✓   │  ✓   │  ✗   (+ perm clinical_notes.read)
+    Compartir Recursos  │     ✓      │   ✓   │  ✓   │  ✗   (+ perm clinic.resources.manage)
+    Supervisión         │     ✓      │   ✓   │  ✓   │  ✗
+    Honorarios          │     ✓      │   ✓   │  ✗   │  ✗   (+ perm clinic.billing.read)
+    Gobernanza          │     ✓      │   ✓   │  ✗   │  ✗
+    Categorías          │     ✓      │   ✓   │  ✓   │  ✗
+    Nueva Cita          │     ✓      │   ✓   │  ✓   │  ✓
+    Alta Paciente       │     ✓      │   ✓   │  ✓   │  ✓   (+ perm patients.write)
+    ════════════════════════════════════════════════════════
+*/

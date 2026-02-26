@@ -1,4 +1,4 @@
-import { Shield, Users, Info, CheckCircle2 } from 'lucide-react';
+import { Shield, Users, Info, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { PermissionToggle } from '../features/clinics/PermissionToggle';
 import { Can } from '../components/auth/Can';
 import { useAuth } from '../context/AuthContext';
@@ -7,123 +7,160 @@ import { useEffect } from 'react';
 const SovereigntyPage = ({ fetchAppointments }) => {
     const { user, refreshUser } = useAuth();
 
-    // 1. Efecto de seguridad: Si entramos y no hay member_id, forzamos refresco inmediatamente
     useEffect(() => {
         if (user && !user.member_id && refreshUser) {
             refreshUser();
         }
     }, [user, refreshUser]);
 
-    /** * LÓGICA DE PERSISTENCIA:
-     * El backend devuelve un array 'consents'. Buscamos si existe el de citas.
-     */
-    const isAgendaHidden = user?.consents?.some(
+    // is_granted = true → el miembro COMPARTIÓ su agenda con la clínica
+    const isSharing = user?.consents?.some(
         c => c.type === 'appointments' && (c.is_granted === true || c.is_granted === 1)
     ) || false;
 
-    // Función de sincronización tras mover el switch
     const handleUpdate = async () => {
         try {
-            if (refreshUser) {
-                await refreshUser();
-            }
-            if (fetchAppointments) {
-                fetchAppointments();
-            }
-            console.log("✅ Soberanía actualizada y AuthContext sincronizado.");
+            if (refreshUser) await refreshUser();
+            if (fetchAppointments) fetchAppointments();
         } catch (error) {
             console.error("❌ Error al actualizar estado local:", error);
         }
     };
 
-    // Identificación de IDs. 
-    // clinicId viene de la clínica activa. 
-    // memberId viene del perfil de usuario (cargado vía refreshUser).
     const clinicId = user?.activeClinic?.id || user?.clinic_id;
     const memberId = user?.member_id;
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <header className="flex items-center gap-4 mb-10">
-                <div className="p-3 bg-orange-500 rounded-2xl text-white shadow-xl shadow-orange-500/20">
-                    <Shield className="w-7 h-7" />
-                </div>
-                <div>
-                    <h1 className="text-3xl font-light dark:text-white">
-                        Soberanía de <span className="font-bold">Datos</span>
+        <div className="max-w-5xl mx-auto px-6 pt-8 pb-20 animate-in fade-in duration-700">
+
+            {/* Header */}
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1 h-4 bg-orange-500" />
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                            Seguridad y Privacidad
+                        </span>
+                    </div>
+                    <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+                        Soberanía de <span className="text-orange-500">Datos</span>
                     </h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">
-                        Controla la visibilidad de tu información clínica
+                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                        Controla quién puede acceder a tu información clínica y agenda profesional.
                     </p>
+                </div>
+
+                <div className="hidden md:block p-3 bg-orange-50 dark:bg-orange-500/10 rounded-2xl border border-orange-100 dark:border-orange-500/20">
+                    <Shield className="w-6 h-6 text-orange-500" />
                 </div>
             </header>
 
             <Can
                 perform="clinic.resources.manage"
                 fallback={
-                    <div className="bg-gray-50/50 dark:bg-[#101828]/50 border border-dashed border-gray-200 dark:border-gray-800 rounded-[2.5rem] p-12 text-center">
-                        <Shield className="mx-auto text-gray-300 dark:text-gray-700 mb-4 opacity-30" size={48} />
-                        <p className="text-gray-500 dark:text-gray-400 font-medium">
-                            La configuración de soberanía está administrada globalmente por la clínica.
+                    <div className="bg-slate-50 dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-16 text-center">
+                        <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                            <Shield className="text-slate-300 dark:text-slate-600 opacity-50" size={32} />
+                        </div>
+                        <h3 className="text-slate-900 dark:text-white font-bold mb-2">Administración Restringida</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm mx-auto">
+                            La configuración de soberanía está administrada globalmente por la clínica para cumplir con las normativas locales.
                         </p>
                     </div>
                 }
             >
-                <div className="bg-white dark:bg-[#161f31] border border-gray-100 dark:border-gray-800 rounded-[2.5rem] p-8 shadow-sm">
-                    <div className="mb-8">
-                        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                            Privacidad y Soberanía
-                        </h3>
-                        <p className="text-gray-500 dark:text-gray-400 mt-2 leading-relaxed text-sm">
-                            Tú decides qué información es visible para la administración de la clínica y tus colegas.
-                        </p>
-                    </div>
+                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-[2.5rem] p-10 shadow-sm relative overflow-hidden">
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="w-2 h-2 rounded-full bg-orange-500" />
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                                Configuración de Visibilidad
+                            </h3>
+                        </div>
 
-                    <div className="bg-orange-50 dark:bg-orange-500/5 rounded-[3rem] p-8 border border-orange-100 dark:border-orange-500/10 transition-all hover:shadow-md">
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 bg-white dark:bg-[#161f31] rounded-2xl flex-shrink-0 flex items-center justify-center border border-orange-100 dark:border-gray-800 shadow-sm text-orange-500">
-                                    <Users size={24} />
-                                </div>
-                                <div>
-                                    <p className="text-base font-bold text-gray-800 dark:text-gray-200">Visibilidad de Agenda</p>
-                                    <p className="text-xs text-orange-600/70 dark:text-orange-400/70 font-medium flex items-center gap-1 mt-1">
-                                        <Info size={12} /> Restricción de acceso a datos sensibles
-                                    </p>
-
-                                    <ul className="mt-6 space-y-3 border-l-2 border-orange-200 dark:border-orange-500/20 pl-4">
-                                        <li className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400">
-                                            <CheckCircle2 size={14} className="text-orange-500/60" />
-                                            Anonimización: Tus colegas solo verán "Cita Ocupada".
-                                        </li>
-                                        <li className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400">
-                                            <CheckCircle2 size={14} className="text-orange-500/60" />
-                                            Privacidad: Se ocultan nombres, apellidos y documentos.
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-
-                            <div className="pt-2">
-                                {/* CAMBIO CLAVE: Mientras no hay memberId, mostramos un loader sutil en vez de Error */}
-                                {memberId ? (
-                                    <PermissionToggle
-                                        clinicId={clinicId}
-                                        memberId={memberId}
-                                        resourceType="appointments"
-                                        label="Ocultar Agenda"
-                                        initialValue={isAgendaHidden}
-                                        onUpdate={handleUpdate}
-                                    />
-                                ) : (
-                                    <div className="flex flex-col items-center gap-1">
-                                        <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                                        <span className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">Sincronizando</span>
+                        <div className={`rounded-[2rem] p-8 md:p-10 border transition-all duration-500 ${isSharing
+                            ? 'bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-100 dark:border-emerald-500/10'
+                            : 'bg-orange-50/50 dark:bg-orange-500/5 border-orange-100 dark:border-orange-500/10'
+                            }`}>
+                            <div className="flex flex-col md:flex-row items-start justify-between gap-8">
+                                <div className="flex items-start gap-6">
+                                    <div className={`w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center border shadow-sm transition-colors duration-500 ${isSharing
+                                        ? 'bg-white dark:bg-slate-900 border-emerald-100 dark:border-emerald-500/20 text-emerald-500'
+                                        : 'bg-white dark:bg-slate-900 border-orange-100 dark:border-orange-500/20 text-orange-500'
+                                        }`}>
+                                        <Users size={28} />
                                     </div>
-                                )}
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                                                Visibilidad de Agenda Profesional
+                                            </p>
+                                            {/* Estado dinámico según si comparte o no */}
+                                            <div className={`flex items-center gap-2 mt-1 transition-colors duration-300 ${isSharing
+                                                ? 'text-emerald-600/80 dark:text-emerald-400/80'
+                                                : 'text-orange-600/70 dark:text-orange-400/70'
+                                                }`}>
+                                                {isSharing
+                                                    ? <Eye size={14} />
+                                                    : <EyeOff size={14} />
+                                                }
+                                                <p className="text-xs font-bold uppercase tracking-wider">
+                                                    {isSharing
+                                                        ? 'Compartiendo con la clínica'
+                                                        : 'Información privada — solo visible para vos'
+                                                    }
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-3 py-2">
+                                            <div className="flex items-top gap-2 md:mr-12 2xl:mr-20 text-sm text-slate-600 dark:text-slate-400">
+                                                <Info size={16} className={`shrink-0 mt-[0.24rem] ${isSharing ? 'text-emerald-500' : 'text-orange-500'}`} />
+                                                <span>
+                                                    {isSharing
+                                                        ? <><strong className="text-slate-900 dark:text-slate-200">Activo:</strong> Colegas verán tus bloques como "Ocupado". Los datos del paciente siguen siendo privados.</>
+                                                        : <><strong className="text-slate-900 dark:text-slate-200">Privado:</strong> Tu agenda no es visible para ningún miembro de la clínica.</>
+                                                    }
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Toggle + estado */}
+                                <div className={`w-full md:w-[140px] flex flex-col items-center p-6 bg-white dark:bg-slate-900 rounded-3xl border shadow-sm transition-colors duration-500 ${isSharing
+                                    ? 'border-emerald-100 dark:border-emerald-500/10'
+                                    : 'border-orange-100 dark:border-orange-500/10'
+                                    }`}>
+                                    {memberId ? (
+                                        <div className="flex flex-col items-center gap-2">
+                                            <PermissionToggle
+                                                clinicId={clinicId}
+                                                memberId={memberId}
+                                                resourceType="appointments"
+                                                label="Agenda"
+                                                initialValue={isSharing}
+                                                onUpdate={handleUpdate}
+                                            />
+                                            <span className={`text-[10px] font-black uppercase tracking-widest transition-colors duration-300 ${isSharing ? 'text-emerald-500' : 'text-orange-500'
+                                                }`}>
+                                                {isSharing ? 'Compartiendo' : 'Privado'}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-2 py-2">
+                                            <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+                                            <span className="text-[10px] text-orange-500 font-black uppercase tracking-[0.2em]">Sincronizando</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    {/* Marca de agua decorativa */}
+                    <Shield className="absolute -right-12 -bottom-12 text-slate-100 dark:text-slate-800/20 w-64 h-64 -rotate-12 pointer-events-none" />
                 </div>
             </Can>
         </div>

@@ -73,7 +73,7 @@ const ResourcePill = ({ active, label, onClick, disabled = false }) => (
             flex items-center gap-2 px-4 py-1.5 rounded-full transition-all duration-300 border backdrop-blur-md
             ${active
                 ? 'bg-[#50e3c2]/15 dark:bg-[#50e3c2]/20 border-[#50e3c2]/50 dark:border-[#50e3c2]/40 text-[#50e3c2] hover:bg-red-200/10 hover:border-red-500/40 hover:text-red-400/80 dark:hover:bg-[#50e3c2]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_0_12px_rgba(80,227,194,0.05)]'
-                : 'bg-slate-200/40 dark:bg-white/5 border-white/40 dark:border-white/10 text-slate-400 hover:bg-white/40 dark:hover:bg-white/10 hover:border-white/60 dark:hover:border-white/20 hover:text-slate-600 dark:hover:text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]'}
+                : 'bg-slate-200/40 dark:bg-white/5 border-white/40 dark:border-white/10 text-slate-400 hover:bg-[#50e3c2]/10 dark:hover:bg-white/10 hover:border-[#50e3c2]/40 dark:hover:border-white/20 hover:text-slate-600 dark:hover:text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]'}
             ${disabled ? 'cursor-not-allowed opacity-30 grayscale' : 'cursor-pointer active:scale-90'}
         `}
     >
@@ -164,7 +164,7 @@ export const Clinics = () => {
                     {/* Sidebar Explicativo */}
                     <aside className="col-span-12 lg:col-span-4 xl:col-span-3">
                         <div className="bg-slate-200/20 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 sticky top-34">
-                            <div className={`w-12 h-12 rounded-xl ${tabExplanations[activeTab].bg} border border-slate-100 dark:border-slate-700 flex items-center justify-center mb-6`}>
+                            <div className={`w-12 h-12 rounded-xl ${tabExplanations[activeTab].bg} border bg-slate-200/30 border-slate-200 dark:border-slate-700 flex items-center justify-center mb-6`}>
                                 <div className={tabExplanations[activeTab].color}>
                                     {tabExplanations[activeTab].icon}
                                 </div>

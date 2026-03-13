@@ -5,20 +5,20 @@ import { useAuth } from './context/AuthContext';
 import { Toaster } from 'sonner';
 
 // --- PÁGINAS ---
-import Dashboard from './pages/Dashboard';
-import Settings from './pages/Settings';
-import SovereigntyPage from './pages/SovereigntyPage';
-import { PatientsPage } from './pages/PatientsPage';
+import Dashboard from './pages/A_Home';
+import Settings from './pages/Z_Settings';
+import SovereigntyPage from './pages/E_Share';
+import { PatientsPage } from './pages/B_Patients';
 import { PatientHistoryPage } from './pages/PatientHistoryPage';
-import { CalendarPage } from './pages/CalendarPage';
-import { BookingPage } from './pages/BookingPage';
-import { BillingPage } from './pages/BillingPage';
-import { CategoriesPage } from './pages/SystemPages';
-import Clinics from './pages/Clinics';
-import { NewPatient } from './pages/NewPatient';
-import { EditPatient } from './pages/EditPatient';
-import { Login } from './pages/Login';
-import { AcceptInvitation } from './pages/AcceptInvitation';
+import { CalendarPage } from './pages/C_Agenda';
+import { BookingPage } from './pages/J_NewAppointment';
+import { BillingPage } from './pages/G_Billing';
+import { CategoriesPage } from './pages/I_Categories';
+import { Clinics } from './pages/H_Clinics';
+import { NewPatient } from './pages/K_NewPatient';
+import { EditPatient } from './pages/K_EditPatient';
+import { Login } from './pages/Z_Login';
+import { AcceptInvitation } from './pages/Z_AcceptInvitation';
 
 // --- UI & ICONS ---
 import { PlaceholderPage } from './components/ui/PlaceholderPage';

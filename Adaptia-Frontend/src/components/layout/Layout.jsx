@@ -115,7 +115,7 @@ export const Layout = () => {
                         </div>
                     </div>
                 </header>
-                <div className="flex-1 overflow-hidden bg-gray-50/30 dark:bg-dark-bg transition-colors">
+                <div className="flex-1 overflow-y-auto bg-gray-50/30 dark:bg-dark-bg transition-colors">
                     <Outlet />
                 </div>
             </main>

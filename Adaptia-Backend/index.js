@@ -8,22 +8,20 @@ import { createDatabaseSchema } from './src/auth/models.js';
 import patientRouter from './src/patients/patients.js';
 import clinicRouter from './src/clinics/clinics.routes.js';
 import appointmentRouter from './src/appointments/appointments.js';
+import categoryRouter from './src/categories/categories.js';
 
 const app = express();
 
 // --- 1. MIDDLEWARES ---
-
-// Configuración de CORS robusta para evitar el "NetworkError"
 app.use(cors({
-    origin: true, // Permite cualquier origen dinámicamente o puedes poner 'http://localhost:5173'
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-    credentials: true // Vital si decides usar cookies o sesiones en el futuro
+    credentials: true
 }));
 
 app.use(express.json());
 
-// Inyectar pool en cada request para que los controladores lo usen
 app.use((req, res, next) => {
     req.pool = pool;
     next();
@@ -35,11 +33,6 @@ pool.query(createDatabaseSchema)
     .catch(err => console.error("❌ Error DB al sincronizar:", err));
 
 // --- 2. RUTAS DE AUTENTICACIÓN ---
-
-/**
- * LOGIN: Ahora incluye el token de forma explícita para que el Front 
- * no falle al intentar leer 'refreshUser'
- */
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
@@ -62,9 +55,6 @@ app.post('/api/auth/login', async (req, res) => {
 
         if (rows.length > 0 && rows[0].password_hash === password) {
             const user = rows[0];
-
-            // SIMULACIÓN DE TOKEN: 
-            // Si no usas JWT aún, enviamos un string para que el AuthContext no de error de "Token no encontrado"
             const dummyToken = `session_token_${user.id}_${Date.now()}`;
 
             return res.json({
@@ -72,7 +62,7 @@ app.post('/api/auth/login', async (req, res) => {
                     id: user.id,
                     name: user.name,
                     email: user.email,
-                    token: dummyToken, // <--- CRÍTICO: Para que refreshUser() funcione
+                    token: dummyToken,
                     activeClinic: user.clinic_id ? {
                         id: user.clinic_id,
                         name: user.clinic_name,
@@ -107,10 +97,11 @@ app.post('/api/auth/register', async (req, res) => {
 app.use('/api/patients', patientRouter);
 app.use('/api/clinics', clinicRouter);
 app.use('/api/appointments', appointmentRouter);
+app.use('/api/categories', categoryRouter);
 
 app.get('/', (req, res) => res.send('🚀 Adaptia API Operativa'));
 
-// Manejador de errores global para que el servidor no se caiga ante errores 500
+// Manejador de errores global
 app.use((err, req, res, next) => {
     console.error("❌ Error No Manejado:", err.stack);
     res.status(500).json({ message: "Algo salió mal en el servidor" });

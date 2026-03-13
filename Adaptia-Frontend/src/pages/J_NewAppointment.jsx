@@ -12,7 +12,7 @@ export const BookingPage = () => {
     }, [user]);
 
     return (
-        <div className="h-screen max-w-7xl mx-auto px-6 pt-6 pb-6 flex flex-col overflow-hidden animate-in fade-in duration-700">
+        <div className="h-full max-w-7xl mx-auto px-6 pt-6 pb-6 flex flex-col overflow-hidden animate-in fade-in duration-700">
 
             {/* Header Compacto */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 shrink-0">

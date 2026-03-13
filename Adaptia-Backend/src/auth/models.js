@@ -9,13 +9,11 @@ export const createDatabaseSchema = `
     name TEXT NOT NULL UNIQUE
   );
 
-  -- TABLA NUEVA: Matriz de Gobernanza por Rol
-  -- Aquí se guarda qué puede hacer un 'doctor' o 'recepcionista' por defecto
   CREATE TABLE IF NOT EXISTS role_permissions (
     id SERIAL PRIMARY KEY,
     clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
     role_name TEXT NOT NULL,
-    resource TEXT NOT NULL, -- 'appointments', 'patients', 'clinical_notes'
+    resource TEXT NOT NULL,
     can_view BOOLEAN DEFAULT false,
     can_edit BOOLEAN DEFAULT false,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -47,18 +45,18 @@ export const createDatabaseSchema = `
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     role_id INTEGER REFERENCES roles(id),
-    clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE
+    clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
+    UNIQUE(user_id)
   );
 
-  -- TABLA NUEVA: Invitaciones
-  -- Necesaria para el endpoint de envío de correos que tienes en index.js
   CREATE TABLE IF NOT EXISTS invitations (
     id SERIAL PRIMARY KEY,
     clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
     role_id INTEGER REFERENCES roles(id),
     invited_by INTEGER REFERENCES users(id),
-    status TEXT DEFAULT 'pending', -- 'pending', 'accepted', 'expired'
+    token TEXT,
+    status TEXT DEFAULT 'pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -67,7 +65,15 @@ export const createDatabaseSchema = `
     name TEXT NOT NULL,
     owner_member_id INTEGER REFERENCES members(id),
     clinic_id INTEGER REFERENCES clinics(id),
-    history JSONB DEFAULT '{}'
+    history JSONB DEFAULT '{}',
+    email TEXT,
+    phone TEXT,
+    dni VARCHAR,
+    address TEXT,
+    birth_date DATE,
+    gender VARCHAR,
+    insurance_name VARCHAR,
+    insurance_number VARCHAR
   );
 
   CREATE TABLE IF NOT EXISTS consents (
@@ -78,7 +84,7 @@ export const createDatabaseSchema = `
     is_granted BOOLEAN DEFAULT FALSE,
     UNIQUE(member_id, resource_type, clinic_id)
   );
-  
+
   CREATE TABLE IF NOT EXISTS appointments (
     id SERIAL PRIMARY KEY,
     patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
@@ -98,4 +104,32 @@ export const createDatabaseSchema = `
     content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
+    clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    slug TEXT NOT NULL,
+    color TEXT DEFAULT '#50e3c2',
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(clinic_id, slug)
+  );
+
+  CREATE TABLE IF NOT EXISTS services (
+    id SERIAL PRIMARY KEY,
+    clinic_id INTEGER REFERENCES clinics(id) ON DELETE CASCADE,
+    category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    duration_min INTEGER DEFAULT 60,
+    price NUMERIC(10,2),
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_categories_clinic ON categories(clinic_id);
+  CREATE INDEX IF NOT EXISTS idx_services_category ON services(category_id);
+  CREATE INDEX IF NOT EXISTS idx_services_clinic    ON services(clinic_id);
 `;

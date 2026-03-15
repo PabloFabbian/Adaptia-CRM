@@ -37,21 +37,21 @@ const SovereigntyPage = ({ fetchAppointments }) => {
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                        <div className="w-1 h-4 bg-orange-500" />
+                        <div className="w-1 h-4 bg-[#50e3c2]" />
                         <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
                             Seguridad y Privacidad
                         </span>
                     </div>
                     <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
-                        Soberanía de <span className="text-orange-500">Datos</span>
+                        Soberanía de <span className="text-[#50e3c2]">Datos</span>
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
                         Controla quién puede acceder a tu información clínica y agenda profesional.
                     </p>
                 </div>
 
-                <div className="hidden md:block p-3 bg-orange-50 dark:bg-orange-500/10 rounded-2xl border border-orange-100 dark:border-orange-500/20">
-                    <Shield className="w-6 h-6 text-orange-500" />
+                <div className="hidden md:block p-3 bg-orange-50 dark:bg-[#50e3c2]/10 rounded-2xl border border-orange-100 dark:border-[#50e3c2]/20">
+                    <Shield className="w-6 h-6 text-[#50e3c2]" />
                 </div>
             </header>
 
@@ -72,7 +72,7 @@ const SovereigntyPage = ({ fetchAppointments }) => {
                 <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-[2.5rem] p-10 shadow-sm relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="flex items-center gap-3 mb-8">
-                            <div className="w-2 h-2 rounded-full bg-orange-500" />
+                            <div className="w-2 h-2 rounded-full bg-[#50e3c2]" />
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                                 Configuración de Visibilidad
                             </h3>
@@ -80,13 +80,13 @@ const SovereigntyPage = ({ fetchAppointments }) => {
 
                         <div className={`rounded-[2rem] p-8 md:p-10 border transition-all duration-500 ${isSharing
                             ? 'bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-100 dark:border-emerald-500/10'
-                            : 'bg-orange-50/50 dark:bg-orange-500/5 border-orange-100 dark:border-orange-500/10'
+                            : 'bg-orange-50/50 dark:bg-[#50e3c2]/5 border-orange-100 dark:border-[#50e3c2]/10'
                             }`}>
                             <div className="flex flex-col md:flex-row items-start justify-between gap-8">
                                 <div className="flex items-start gap-6">
                                     <div className={`w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center border shadow-sm transition-colors duration-500 ${isSharing
                                         ? 'bg-white dark:bg-slate-900 border-emerald-100 dark:border-emerald-500/20 text-emerald-500'
-                                        : 'bg-white dark:bg-slate-900 border-orange-100 dark:border-orange-500/20 text-orange-500'
+                                        : 'bg-white dark:bg-slate-900 border-orange-100 dark:border-[#50e3c2]/20 text-[#50e3c2]'
                                         }`}>
                                         <Users size={28} />
                                     </div>
@@ -116,7 +116,7 @@ const SovereigntyPage = ({ fetchAppointments }) => {
 
                                         <div className="grid grid-cols-1 gap-3 py-2">
                                             <div className="flex items-top gap-2 md:mr-12 2xl:mr-20 text-sm text-slate-600 dark:text-slate-400">
-                                                <Info size={16} className={`shrink-0 mt-[0.24rem] ${isSharing ? 'text-emerald-500' : 'text-orange-500'}`} />
+                                                <Info size={16} className={`shrink-0 mt-[0.24rem] ${isSharing ? 'text-emerald-500' : 'text-[#50e3c2]'}`} />
                                                 <span>
                                                     {isSharing
                                                         ? <><strong className="text-slate-900 dark:text-slate-200">Activo:</strong> Colegas verán tus bloques como "Ocupado". Los datos del paciente siguen siendo privados.</>
@@ -131,7 +131,7 @@ const SovereigntyPage = ({ fetchAppointments }) => {
                                 {/* Toggle + estado */}
                                 <div className={`w-full md:w-[140px] flex flex-col items-center p-6 bg-white dark:bg-slate-900 rounded-3xl border shadow-sm transition-colors duration-500 ${isSharing
                                     ? 'border-emerald-100 dark:border-emerald-500/10'
-                                    : 'border-orange-100 dark:border-orange-500/10'
+                                    : 'border-orange-100 dark:border-[#50e3c2]/10'
                                     }`}>
                                     {memberId ? (
                                         <div className="flex flex-col items-center gap-2">
@@ -143,15 +143,15 @@ const SovereigntyPage = ({ fetchAppointments }) => {
                                                 initialValue={isSharing}
                                                 onUpdate={handleUpdate}
                                             />
-                                            <span className={`text-[10px] font-black uppercase tracking-widest transition-colors duration-300 ${isSharing ? 'text-emerald-500' : 'text-orange-500'
+                                            <span className={`text-[10px] font-black uppercase tracking-widest transition-colors duration-300 ${isSharing ? 'text-emerald-500' : 'text-[#50e3c2]'
                                                 }`}>
                                                 {isSharing ? 'Compartiendo' : 'Privado'}
                                             </span>
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center gap-2 py-2">
-                                            <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
-                                            <span className="text-[10px] text-orange-500 font-black uppercase tracking-[0.2em]">Sincronizando</span>
+                                            <Loader2 className="w-6 h-6 text-[#50e3c2] animate-spin" />
+                                            <span className="text-[10px] text-[#50e3c2] font-black uppercase tracking-[0.2em]">Sincronizando</span>
                                         </div>
                                     )}
                                 </div>

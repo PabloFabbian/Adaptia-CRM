@@ -13,11 +13,13 @@ const authHeaders = () => ({
     'Authorization': `Bearer ${getToken()}`
 });
 
-export const getPatientById = async (patientId) => {
+export const getPatientById = async (patientId, clinicId) => {
     try {
-        const response = await fetch(`${API_URL}/patients/${patientId}`, {
-            headers: authHeaders()
-        });
+        const url = clinicId
+            ? `${API_URL}/patients/${patientId}?clinicId=${clinicId}`
+            : `${API_URL}/patients/${patientId}`;
+
+        const response = await fetch(url, { headers: authHeaders() });
         if (!response.ok) throw new Error('Error al obtener el paciente');
         return await response.json();
     } catch (error) {

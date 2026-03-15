@@ -63,6 +63,11 @@ router.get('/',
  */
 router.get('/:id',
     authenticateToken,
+    // Inyectar clinicId desde query a params
+    (req, res, next) => {
+        if (req.query.clinicId) req.params.clinicId = req.query.clinicId;
+        next();
+    },
     requireCapability(CAPABILITIES.READ_PATIENTS),
     async (req, res) => {
         try {
@@ -140,14 +145,21 @@ router.put('/:id',
 
 /**
  * 5. NOTAS DEL PACIENTE
+ * clinicId viene como query param — lo inyectamos en req antes del middleware
  */
 router.get('/:id/notes',
     authenticateToken,
+    // Inyectar clinicId desde query a params para que requireCapability lo encuentre
+    (req, res, next) => {
+        if (req.query.clinicId) req.params.clinicId = req.query.clinicId;
+        next();
+    },
     requireCapability(CAPABILITIES.READ_NOTES),
     async (req, res) => {
         try {
             const patientId = parseInt(req.params.id, 10);
-            const { userId, clinicId } = req.query;
+            const clinicId = req.query.clinicId;
+            const userId = req.user?.id || req.query.userId;
 
             if (isNaN(patientId) || !userId || !clinicId) {
                 return res.status(400).json({ error: "Faltan parámetros de identificación" });
@@ -181,12 +193,13 @@ router.get('/:id/notes',
             query += ` ORDER BY n.created_at DESC`;
             const { rows } = await pool.query(query, params);
 
-            const notesWithPermissions = rows.map(note => ({
-                ...note,
-                canEdit: note.member_id === current_member_id
-            }));
-
-            res.json({ success: true, data: notesWithPermissions });
+            res.json({
+                success: true,
+                data: rows.map(note => ({
+                    ...note,
+                    canEdit: note.member_id === current_member_id
+                }))
+            });
         } catch (error) {
             console.error("❌ ERROR:", error.message);
             res.status(500).json({ error: "Error al recuperar notas" });

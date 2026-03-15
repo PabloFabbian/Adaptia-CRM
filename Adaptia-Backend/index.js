@@ -9,6 +9,7 @@ import patientRouter from './src/patients/patients.js';
 import clinicRouter from './src/clinics/clinics.routes.js';
 import appointmentRouter from './src/appointments/appointments.js';
 import categoryRouter from './src/categories/categories.js';
+import calendarRouter from './src/calendar/calendar.routes.js';
 
 const app = express();
 
@@ -56,7 +57,6 @@ app.post('/api/auth/login', async (req, res) => {
         if (rows.length > 0 && rows[0].password_hash === password) {
             const user = rows[0];
             const dummyToken = `session_token_${user.id}_${Date.now()}`;
-
             return res.json({
                 user: {
                     id: user.id,
@@ -98,6 +98,7 @@ app.use('/api/patients', patientRouter);
 app.use('/api/clinics', clinicRouter);
 app.use('/api/appointments', appointmentRouter);
 app.use('/api/categories', categoryRouter);
+app.use('/api/calendar', calendarRouter);
 
 app.get('/', (req, res) => res.send('🚀 Adaptia API Operativa'));
 

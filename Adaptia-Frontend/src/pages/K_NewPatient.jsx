@@ -1,5 +1,6 @@
+// K_NewPatient.jsx
 import { useState, useEffect, useRef } from 'react';
-import { UserPlus, ArrowLeft, Mail, Phone, CreditCard, MapPin, AlertCircle, ExternalLink, Calendar, Save, Edit3, HeartPulse, Fingerprint, BrainCircuit, Plus, X } from 'lucide-react';
+import { UserPlus, ArrowLeft, Mail, Phone, CreditCard, MapPin, AlertCircle, Calendar, Save, HeartPulse, Fingerprint, BrainCircuit, Pill, ClipboardList } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -8,7 +9,7 @@ export const NewPatient = () => {
     const { id } = useParams();
     const isEditMode = Boolean(id);
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, activeClinic } = useAuth();
     const errorRef = useRef(null);
 
     const [loading, setLoading] = useState(false);
@@ -17,44 +18,34 @@ export const NewPatient = () => {
     const [duplicatePatient, setDuplicatePatient] = useState(null);
 
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        phone: '',
-        dni: '',
-        address: '',
-        birth_date: '',
-        gender: '',
-        insurance_name: '',
-        insurance_number: '',
-        history: {
-            motivo_consulta: '',
-            antecedentes: '',
-            medicacion: ''
-        }
+        name: '', email: '', phone: '', dni: '', address: '',
+        birth_date: '', gender: '', insurance_name: '', insurance_number: '',
+        history: { motivo_consulta: '', antecedentes: '', medicacion: '' }
     });
+
+    const getToken = () =>
+        localStorage.getItem('adaptia_token') ||
+        localStorage.getItem('token') ||
+        (() => { try { return JSON.parse(localStorage.getItem('adaptia_user'))?.token; } catch { return null; } })();
 
     useEffect(() => {
         if (isEditMode) {
             const fetchPatient = async () => {
                 try {
-                    const res = await fetch(`http://localhost:3001/api/patients/${id}`);
+                    const res = await fetch(
+                        `http://localhost:3001/api/patients/${id}?clinicId=${activeClinic?.id}`,
+                        { headers: { 'Authorization': `Bearer ${getToken()}` } }
+                    );
                     const json = await res.json();
                     if (json.data) {
                         const p = json.data;
                         setFormData({
-                            name: p.name || '',
-                            email: p.email || '',
-                            phone: p.phone || '',
-                            dni: p.dni || '',
-                            address: p.address || '',
-                            gender: p.gender || '',
-                            insurance_name: p.insurance_name || '',
-                            insurance_number: p.insurance_number || '',
+                            name: p.name || '', email: p.email || '', phone: p.phone || '',
+                            dni: p.dni || '', address: p.address || '', gender: p.gender || '',
+                            insurance_name: p.insurance_name || '', insurance_number: p.insurance_number || '',
                             birth_date: p.birth_date ? p.birth_date.split('T')[0] : '',
                             history: p.history && typeof p.history === 'object' ? p.history : {
-                                motivo_consulta: '',
-                                antecedentes: '',
-                                medicacion: ''
+                                motivo_consulta: '', antecedentes: '', medicacion: ''
                             }
                         });
                     }
@@ -64,14 +55,12 @@ export const NewPatient = () => {
                     setFetching(false);
                 }
             };
-            fetchPatient();
+            if (activeClinic?.id) fetchPatient();
         }
-    }, [id, isEditMode]);
+    }, [id, isEditMode, activeClinic?.id]);
 
     const scrollToError = () => {
-        setTimeout(() => {
-            errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+        setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     };
 
     const handleChange = (e) => {
@@ -80,10 +69,7 @@ export const NewPatient = () => {
         setDuplicatePatient(null);
         if (name.startsWith('history.')) {
             const field = name.split('.')[1];
-            setFormData(prev => ({
-                ...prev,
-                history: { ...prev.history, [field]: value }
-            }));
+            setFormData(prev => ({ ...prev, history: { ...prev.history, [field]: value } }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
@@ -95,9 +81,12 @@ export const NewPatient = () => {
         setError('');
         try {
             if (!isEditMode) {
-                const checkRes = await fetch('http://localhost:3001/api/patients');
+                const checkRes = await fetch(
+                    `http://localhost:3001/api/patients?clinicId=${activeClinic?.id}&userId=${user?.id}`,
+                    { headers: { 'Authorization': `Bearer ${getToken()}` } }
+                );
                 const { data } = await checkRes.json();
-                const existing = data.find(p => p.dni === formData.dni && formData.dni !== '');
+                const existing = data?.find(p => p.dni === formData.dni && formData.dni !== '');
                 if (existing) {
                     setError(`El paciente "${existing.name}" ya está registrado con ese DNI.`);
                     setDuplicatePatient(existing);
@@ -106,13 +95,24 @@ export const NewPatient = () => {
                     return;
                 }
             }
+
             const url = isEditMode ? `http://localhost:3001/api/patients/${id}` : 'http://localhost:3001/api/patients';
             const method = isEditMode ? 'PUT' : 'POST';
+
             const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...formData, owner_member_id: user?.id || 1 })
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getToken()}`
+                },
+                body: JSON.stringify({
+                    ...formData,
+                    owner_member_id: user?.id || 1,
+                    clinic_id: activeClinic?.id,
+                    clinicId: activeClinic?.id,
+                })
             });
+
             if (response.ok) {
                 toast.success(isEditMode ? "Paciente actualizado correctamente" : "Paciente registrado con éxito");
                 navigate('/pacientes');
@@ -134,7 +134,6 @@ export const NewPatient = () => {
             ? 'border-red-500 bg-red-50 dark:bg-red-500/10 text-red-600'
             : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:border-[#50e3c2] focus:ring-4 focus:ring-[#50e3c2]/5'}
     `;
-
     const labelClass = "text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] mb-2 block ml-1";
 
     if (fetching) return (
@@ -148,7 +147,6 @@ export const NewPatient = () => {
 
     return (
         <div className="max-w-5xl mx-auto px-6 pt-8 pb-20 animate-in fade-in duration-700">
-            {/* Botón Volver - Estilo Dashboard */}
             <Link to="/pacientes" className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mb-8 text-[11px] font-bold uppercase tracking-widest transition-colors group">
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
                 Volver a pacientes
@@ -168,7 +166,6 @@ export const NewPatient = () => {
                 </div>
             </header>
 
-            {/* Banner de Error Estilo Dashboard */}
             <div ref={errorRef}>
                 {error && (
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800 border-l-4 border-red-500 shadow-sm rounded-xl mb-10 animate-in slide-in-from-top-2">
@@ -190,15 +187,13 @@ export const NewPatient = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
-                {/* GRID PRINCIPAL */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-                    {/* SECCIÓN 1: DATOS PERSONALES */}
+                    {/* 01 — INFORMACIÓN BASE */}
                     <div className="bg-white dark:bg-slate-800/50 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
                         <h2 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
                             <span className="text-[#50e3c2]">01</span> Información Base
                         </h2>
-
                         <div className="space-y-4">
                             <div>
                                 <label className={labelClass}>Nombre Completo</label>
@@ -207,7 +202,6 @@ export const NewPatient = () => {
                                     <input name="name" required value={formData.name} onChange={handleChange} className={inputClass(false)} placeholder="Nombre y Apellidos" />
                                 </div>
                             </div>
-
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className={labelClass}>DNI/NIE</label>
@@ -218,15 +212,17 @@ export const NewPatient = () => {
                                 </div>
                                 <div>
                                     <label className={labelClass}>Género</label>
-                                    <select name="gender" value={formData.gender} onChange={handleChange} className={inputClass(false)}>
-                                        <option value="">Seleccionar...</option>
-                                        <option value="Masculino">Masculino</option>
-                                        <option value="Femenino">Femenino</option>
-                                        <option value="Otro">Otro</option>
-                                    </select>
+                                    <div className="relative">
+                                        <UserPlus size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 pointer-events-none" />
+                                        <select name="gender" value={formData.gender} onChange={handleChange} className={inputClass(false)}>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="Masculino">Masculino</option>
+                                            <option value="Femenino">Femenino</option>
+                                            <option value="Otro">Otro</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-
                             <div>
                                 <label className={labelClass}>Fecha de Nacimiento</label>
                                 <div className="relative">
@@ -234,10 +230,17 @@ export const NewPatient = () => {
                                     <input name="birth_date" type="date" value={formData.birth_date} onChange={handleChange} className={inputClass(false)} />
                                 </div>
                             </div>
+                            <div>
+                                <label className={labelClass}>Dirección</label>
+                                <div className="relative">
+                                    <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600" />
+                                    <input name="address" value={formData.address} onChange={handleChange} className={inputClass(false)} placeholder="Dirección completa" />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* SECCIÓN 2: CONTACTO Y SEGURO */}
+                    {/* 02 & 03 — CONTACTO Y SEGURO */}
                     <div className="space-y-8 mt-2">
                         <div className="bg-white dark:bg-slate-800/50 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
                             <h2 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
@@ -273,7 +276,7 @@ export const NewPatient = () => {
                     </div>
                 </div>
 
-                {/* SECCIÓN 4: HISTORIAL (ANCHO COMPLETO) */}
+                {/* 04 — PERFIL CLÍNICO */}
                 <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 shadow-sm">
                     <h2 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] flex items-center gap-2 mb-6">
                         <span className="text-[#50e3c2]">04</span> Perfil Clínico Inicial
@@ -287,7 +290,7 @@ export const NewPatient = () => {
                                     name="history.motivo_consulta"
                                     value={formData.history.motivo_consulta}
                                     onChange={handleChange}
-                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-[#50e3c2] focus:ring-4 focus:ring-[#50e3c2]/5 outline-none min-h-[120px] transition-all"
+                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-[#50e3c2] focus:ring-4 focus:ring-[#50e3c2]/5 outline-none min-h-[120px] transition-all dark:text-slate-200"
                                     placeholder="Describa el motivo de la consulta..."
                                 />
                             </div>
@@ -295,17 +298,23 @@ export const NewPatient = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className={labelClass}>Antecedentes Relevantes</label>
-                                <input name="history.antecedentes" value={formData.history.antecedentes} onChange={handleChange} className={inputClass(false)} placeholder="Notas médicas previas..." />
+                                <div className="relative">
+                                    <ClipboardList size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600" />
+                                    <input name="history.antecedentes" value={formData.history.antecedentes} onChange={handleChange} className={inputClass(false)} placeholder="Notas médicas previas..." />
+                                </div>
                             </div>
                             <div>
                                 <label className={labelClass}>Medicación Actual</label>
-                                <input name="history.medicacion" value={formData.history.medicacion} onChange={handleChange} className={inputClass(false)} placeholder="Fármacos activos..." />
+                                <div className="relative">
+                                    <Pill size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600" />
+                                    <input name="history.medicacion" value={formData.history.medicacion} onChange={handleChange} className={inputClass(false)} placeholder="Fármacos activos..." />
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* ACCIONES FINALES */}
+                {/* ACCIONES */}
                 <div className="flex items-center justify-end gap-4 pt-6">
                     <button
                         type="button"

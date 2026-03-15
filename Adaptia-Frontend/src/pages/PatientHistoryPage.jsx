@@ -85,7 +85,7 @@ export const PatientHistoryPage = () => {
                 // o mostrar todo según el rol (incluyendo el nuevo permiso de Secretaría).
                 const [notesResponse, patientResponse] = await Promise.all([
                     getPatientNotes(id, userId, clinicId),
-                    getPatientById(id)
+                    getPatientById(id, activeClinic?.id)
                 ]);
 
                 if (patientResponse?.data) {

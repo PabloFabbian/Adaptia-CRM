@@ -14,18 +14,22 @@ export const AuthProvider = ({ children }) => {
     const fetchMyPermissions = useCallback(async (roleId, clinicId) => {
         if (roleId === undefined || roleId === null || !clinicId) return;
 
+        // Buscar token en todas las fuentes posibles
+        const token =
+            localStorage.getItem('adaptia_token') ||
+            localStorage.getItem('token') ||
+            (() => { try { return JSON.parse(localStorage.getItem('adaptia_user'))?.token; } catch { return null; } })();
+
         try {
-            const response = await fetch(`${API_BASE_URL}/api/clinics/${clinicId}/roles/${roleId}/capabilities`);
+            const response = await fetch(
+                `${API_BASE_URL}/api/clinics/${clinicId}/roles/${roleId}/capabilities`,
+                token ? { headers: { 'Authorization': `Bearer ${token}` } } : {}
+            );
 
-            if (response.status === 404) {
-                setUserPermissions([]);
-                return;
-            }
-
+            if (response.status === 404) { setUserPermissions([]); return; }
             if (!response.ok) throw new Error('Error al obtener capacidades');
 
             const capabilities = await response.json();
-
             const permissions = capabilities.map(c => {
                 const slug = c.slug || c.capability?.slug || c;
                 return typeof slug === 'string' ? slug.toLowerCase() : slug;

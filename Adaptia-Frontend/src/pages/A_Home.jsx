@@ -64,7 +64,7 @@ const Dashboard = ({ user, appointments = [] }) => {
                             Agenda
                         </button>
 
-                        {can('patients.write') && (
+                        {can('clinic.patients.write') && (
                             <button
                                 onClick={() => navigate('/nuevo-paciente')}
                                 className="flex items-center gap-2 bg-slate-900 dark:bg-[#50e3c2] text-white dark:text-slate-900 px-5 py-3 rounded-xl text-sm font-bold hover:opacity-90 transition-all active:scale-95"
@@ -98,11 +98,11 @@ const Dashboard = ({ user, appointments = [] }) => {
                             <div className="p-3 rounded-lg bg-[#50e3c2] text-slate-900">
                                 <Users size={20} />
                             </div>
-                            {can('patients.read') && <span className="text-[9px] font-bold text-slate-400 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded uppercase">Total</span>}
+                            {can('clinic.patients.read') && <span className="text-[9px] font-bold text-slate-400 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded uppercase">Total</span>}
                         </div>
                         <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Pacientes</p>
                         <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">
-                            {can('patients.read') ? '124' : '---'}
+                            {can('clinic.patients.read') ? '124' : '---'}
                         </h3>
                     </div>
 

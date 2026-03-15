@@ -18,7 +18,14 @@ export const getClinicDirectory = async (req, res) => {
     const { id: clinicId } = req.params;
     try {
         const membersQuery = `
-            SELECT m.id, m.name, u.email, r.name as role_name, m.user_id,
+            SELECT 
+                m.id, m.name, u.email, r.name as role_name, m.user_id,
+                COALESCE(
+                    (SELECT json_agg(DISTINCT c2.slug)
+                    FROM role_capabilities rc
+                    JOIN capabilities c2 ON rc.capability_id = c2.id
+                    WHERE rc.role_id = m.role_id), '[]'
+                ) as role_capabilities,
                 COALESCE(
                     (SELECT json_agg(json_build_object('type', c.resource_type, 'is_granted', c.is_granted))
                     FROM consents c WHERE c.member_id = m.id), '[]'

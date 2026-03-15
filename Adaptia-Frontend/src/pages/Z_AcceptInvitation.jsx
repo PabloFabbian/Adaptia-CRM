@@ -12,6 +12,7 @@ import {
     Loader2,
     Building2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const AcceptInvitation = () => {
     const { token } = useParams();
@@ -61,7 +62,7 @@ export const AcceptInvitation = () => {
             await login({ ...user, ...data });
             navigate('/clinicas');
         } catch (err) {
-            alert(err.message);
+            toast.error(err.message || 'Error al aceptar la invitación');
         } finally {
             setProcessing(false);
         }

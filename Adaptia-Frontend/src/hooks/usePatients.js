@@ -14,7 +14,9 @@ export const usePatients = (clinicId, userId, onPatientFound) => {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('adaptia_token')
+                || localStorage.getItem('token')
+                || (() => { try { return JSON.parse(localStorage.getItem('adaptia_user'))?.token; } catch { return null; } })();
             const res = await fetch(
                 `http://localhost:3001/api/patients?clinicId=${clinicId}&userId=${userId}`,
                 {

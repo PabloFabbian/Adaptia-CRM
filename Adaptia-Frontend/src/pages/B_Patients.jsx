@@ -33,7 +33,7 @@ export const PatientsPage = () => {
     const canWriteNotes = useCallback((patient) => {
         if (!patient || !user) return false;
         if (Number(activeClinic?.role_id) === 0) return true;
-        const hasMatrixPermission = can('notes.write');
+        const hasMatrixPermission = can('clinic.notes.write');
         const isOwner = patient.owner_member_id === user.id;
         return hasMatrixPermission && isOwner;
     }, [user, activeClinic, can]);
@@ -64,7 +64,7 @@ export const PatientsPage = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('adaptia_token') || localStorage.getItem('token')}`
                 },
                 body: JSON.stringify({
                     patient_id: selectedPatient.id,
@@ -122,7 +122,7 @@ export const PatientsPage = () => {
                         </div>
                     </div>
 
-                    <Can perform="patients.write">
+                    <Can perform="clinic.patients.write">
                         <button
                             onClick={() => navigate('/nuevo-paciente')}
                             className="flex items-center justify-center gap-2 bg-slate-900 dark:bg-[#50e3c2] text-white dark:text-slate-900 px-6 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:opacity-90 transition-all active:scale-95"

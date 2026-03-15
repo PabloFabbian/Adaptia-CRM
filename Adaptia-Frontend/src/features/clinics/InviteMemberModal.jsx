@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Mail, Shield, X, Loader2, Send, CheckCircle2, ChevronDown } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { toast } from 'sonner';
 
 export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
     const { user, activeClinic } = useAuth();
@@ -52,7 +53,7 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
         // 🛡️ Validación de seguridad: No dispares la petición si faltan datos
         if (!activeClinic?.id || !roleId || !email) {
             console.error("❌ Datos locales incompletos:", { clinicId: activeClinic?.id, roleId, email });
-            alert("Por favor completa todos los campos.");
+            toast.error("Por favor completá todos los campos.");
             return;
         }
 
@@ -87,7 +88,7 @@ export const InviteMemberModal = ({ isOpen, onClose, onSuccess }) => {
 
         } catch (error) {
             console.error("❌ Error en invitación:", error);
-            alert(error.message);
+            toast.error(error.message || 'Error al enviar la invitación');
         } finally {
             setLoading(false);
         }

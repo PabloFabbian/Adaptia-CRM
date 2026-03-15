@@ -1,5 +1,4 @@
 import { Shield, Users, Info, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { PermissionToggle } from '../features/clinics/PermissionToggle';
 import { Can } from '../components/auth/Can';
 import { useAuth } from '../context/AuthContext';
 import { useEffect } from 'react';
@@ -135,16 +134,26 @@ const SovereigntyPage = ({ fetchAppointments }) => {
                                     }`}>
                                     {memberId ? (
                                         <div className="flex flex-col items-center gap-2">
-                                            <PermissionToggle
-                                                clinicId={clinicId}
-                                                memberId={memberId}
-                                                resourceType="appointments"
-                                                label="Agenda"
-                                                initialValue={isSharing}
-                                                onUpdate={handleUpdate}
-                                            />
-                                            <span className={`text-[10px] font-black uppercase tracking-widest transition-colors duration-300 ${isSharing ? 'text-emerald-500' : 'text-[#50e3c2]'
-                                                }`}>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const token = localStorage.getItem('adaptia_token');
+                                                        await fetch(`http://localhost:3001/api/clinics/${clinicId}/members/${memberId}/consent`, {
+                                                            method: 'PATCH',
+                                                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                                            body: JSON.stringify({ resourceType: 'appointments', is_granted: !isSharing })
+                                                        });
+                                                        await handleUpdate();
+                                                    } catch { }
+                                                }}
+                                                className={`
+                                                    relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer
+                                                    ${isSharing ? 'bg-[#50e3c2]' : 'bg-slate-200 dark:bg-slate-600'}
+                                                `}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isSharing ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest transition-colors duration-300 ${isSharing ? 'text-emerald-500' : 'text-[#50e3c2]'}`}>
                                                 {isSharing ? 'Compartiendo' : 'Privado'}
                                             </span>
                                         </div>

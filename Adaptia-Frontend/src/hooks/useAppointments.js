@@ -1,51 +1,41 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export const useAppointments = () => {
+    const { user, activeClinic } = useAuth();
     const [appointments, setAppointments] = useState([]);
-    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const getToken = () =>
+        localStorage.getItem('adaptia_token') ||
+        localStorage.getItem('token') ||
+        (() => { try { return JSON.parse(localStorage.getItem('adaptia_user'))?.token; } catch { return null; } })();
+
     const fetchAppointments = useCallback(async () => {
-        // No ponemos loading(true) aquí si ya hay datos, 
-        // para evitar que la pantalla parpadee al refrescar.
+        if (!user?.id || !activeClinic?.id) {
+            setLoading(false);
+            return;
+        }
         setError(null);
-
         try {
-            // 1. Verificamos que el puerto sea el 3001 del nuevo index.js
-            const res = await fetch('http://localhost:3001/api/appointments');
-
-            if (!res.ok) {
-                throw new Error(`Error del servidor: ${res.status}`);
-            }
-
+            const res = await fetch(
+                `http://localhost:3001/api/appointments?clinicId=${activeClinic.id}&userId=${user.id}`,
+                { headers: { Authorization: `Bearer ${getToken()}` } }
+            );
+            if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
             const json = await res.json();
-
-            // 2. Mapeo correcto de la respuesta:
-            // En tu index.js envías: { user: "Luis David", data: rows }
             setAppointments(json.data || []);
-            setUser(json.user || "Usuario");
-
         } catch (err) {
-            console.error("❌ Error en el fetch de citas:", err);
+            console.error('❌ Error en useAppointments:', err.message);
             setError(err.message);
-            // Si hay error, nos aseguramos de vaciar las citas para no mostrar basura
             setAppointments([]);
         } finally {
-            // 3. Importante: Esto quita el mensaje de "Cargando..."
             setLoading(false);
         }
-    }, []);
+    }, [user?.id, activeClinic?.id]);
 
-    useEffect(() => {
-        fetchAppointments();
-    }, [fetchAppointments]);
+    useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
 
-    return {
-        appointments,
-        user,
-        loading,
-        error,
-        refresh: fetchAppointments
-    };
+    return { appointments, loading, error, refresh: fetchAppointments };
 };

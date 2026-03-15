@@ -10,34 +10,69 @@ import {
     getMySovereigntyStatus
 } from './clinics.controller.js';
 import { getRoles } from './roles.js';
-
-// Importación corregida a tu carpeta src/auth/
 import { authenticateToken } from '../auth/auth.middleware.js';
+import { requireCapability, CAPABILITIES } from '../auth/permissions.js';
 
 const router = Router();
 
-/** 1. RUTAS GLOBALES Y CATÁLOGOS */
+/**
+ * 1. RUTAS GLOBALES Y CATÁLOGOS
+ * Sin protección — son catálogos públicos que necesita el AuthContext al iniciar
+ */
 router.get('/roles', getRoles);
 router.get('/capabilities', getAllCapabilities);
 
-/** 2. RUTAS DE IDENTIDAD Y SOBERANÍA (Nivel de Usuario) */
-// Esta ruta es vital para que el AuthContext obtenga el member_id al iniciar
+/**
+ * 2. IDENTIDAD Y SOBERANÍA
+ * Solo requiere token válido — no capability específica
+ */
 router.get('/me/sovereignty', authenticateToken, getMySovereigntyStatus);
 
-/** 3. RUTAS BASADAS EN CLÍNICA (/:clinicId) */
-// Capacidades por Rol
-router.get('/:clinicId/roles/:roleId/capabilities', getCapabilitiesByRole);
+/**
+ * 3. RUTAS DE CLÍNICA
+ */
 
-// Directorio y Gobernanza
-router.get('/:id/directory', getClinicDirectory);
-router.get('/:clinicId/governance', getGovernance);
+// Capacidades por Rol — necesita token, sin capability extra (lo usa el AuthContext)
+router.get('/:clinicId/roles/:roleId/capabilities',
+    authenticateToken,
+    getCapabilitiesByRole
+);
 
-// Invitaciones y Permisos de Rol
-router.post('/:clinicId/invitations', createInvitation);
-router.post('/:clinicId/permissions/toggle', toggleRolePermission);
+// Directorio de miembros — solo Owner/Tech Owner
+router.get('/:id/directory',
+    authenticateToken,
+    requireCapability(CAPABILITIES.READ_MEMBERS),
+    getClinicDirectory
+);
 
-/** 4. ACCIONES DE MIEMBRO (Soberanía) */
-// Actualiza el consentimiento individual
-router.patch('/:clinicId/members/:memberId/consent', authenticateToken, toggleMemberConsent);
+// Matriz de gobernanza — solo Owner/Tech Owner
+router.get('/:clinicId/governance',
+    authenticateToken,
+    requireCapability(CAPABILITIES.READ_ROLES),
+    getGovernance
+);
+
+// Invitaciones — solo quien puede gestionar la clínica
+router.post('/:clinicId/invitations',
+    authenticateToken,
+    requireCapability(CAPABILITIES.MANAGE_CLINIC),
+    createInvitation
+);
+
+// Toggle de permisos de rol — solo Owner/Tech Owner
+router.post('/:clinicId/permissions/toggle',
+    authenticateToken,
+    requireCapability(CAPABILITIES.MANAGE_CLINIC),
+    toggleRolePermission
+);
+
+/**
+ * 4. SOBERANÍA INDIVIDUAL
+ * Cualquier miembro puede actualizar su propio consentimiento
+ */
+router.patch('/:clinicId/members/:memberId/consent',
+    authenticateToken,
+    toggleMemberConsent
+);
 
 export default router;

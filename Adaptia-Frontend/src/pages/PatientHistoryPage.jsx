@@ -99,7 +99,7 @@ export const PatientHistoryPage = () => {
 
                     // GOBERNANZA: Quién puede editar el perfil (Se mantiene igual)
                     const isTechOwner = user.role_id === ROLE.TECH_OWNER;
-                    const isPatientOwner = p.owner_member_id === user.id;
+                    const isPatientOwner = p.owner_member_id === user.member_id;
                     setCanEdit(isTechOwner || isPatientOwner);
                 }
 

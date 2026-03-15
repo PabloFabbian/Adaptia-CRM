@@ -25,8 +25,7 @@ const seed = async () => {
         const roles = [
             { name: 'Tech Owner', desc: 'Control total del sistema' },
             { name: 'Owner', desc: 'Acceso administrativo total a la clínica' },
-            { name: 'Administrador', desc: 'Gestión operativa' },
-            { name: 'Especialista', desc: 'Acceso clínico' },
+            { name: 'Psicólogo', desc: 'Acceso clínico y gestión de pacientes' },
             { name: 'Secretaría', desc: 'Gestión de agenda y pacientes' }
         ];
 
@@ -98,7 +97,7 @@ const seed = async () => {
         // 6. Usuarios y Members
         const usersToCreate = [
             { name: 'Pablo Fabbian', email: 'pablo.fabbian@adaptia.com', pass: 'Admin159', role: 'Tech Owner' },
-            { name: 'Luis David', email: 'luis@adaptia.com', pass: '123', role: 'Administrador' }
+            { name: 'Luis David', email: 'luis@adaptia.com', pass: '123', role: 'Psicólogo' }
         ];
 
         for (const userData of usersToCreate) {

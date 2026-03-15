@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useClinics } from '../hooks/useClinics';
 import { Tabs } from '../components/ui/Tabs';
 import { InviteMemberModal } from '../features/clinics/InviteMemberModal';
+import { toast } from 'sonner';
 import {
     Home, Users, Settings, UserPlus, Layout,
     ShieldCheck, Activity, Mail,
@@ -36,7 +37,6 @@ const tabExplanations = {
     }
 };
 
-// Mapa de estilos por rol
 const ROLE_STYLES = {
     'Tech Owner': {
         avatar: 'bg-[#50e3c2]/20 text-[#50e3c2] border-[#50e3c2]/30',
@@ -65,22 +65,25 @@ const DEFAULT_ROLE_STYLE = {
     bar: 'bg-slate-400',
 };
 
-const ResourcePill = ({ active, label, onClick, disabled = false }) => (
+const ResourcePill = ({ active, label, onClick, disabled = false, loading = false }) => (
     <button
         onClick={onClick}
-        disabled={disabled}
+        disabled={disabled || loading}
         className={`
             flex items-center gap-2 px-4 py-1.5 rounded-full transition-all duration-300 border backdrop-blur-md
             ${active
                 ? 'bg-[#50e3c2]/15 dark:bg-[#50e3c2]/20 border-[#50e3c2]/50 dark:border-[#50e3c2]/40 text-[#50e3c2] hover:bg-red-200/10 hover:border-red-500/40 hover:text-red-400/80 dark:hover:bg-[#50e3c2]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_0_12px_rgba(80,227,194,0.05)]'
                 : 'bg-slate-200/40 dark:bg-white/5 border-white/40 dark:border-white/10 text-slate-400 hover:bg-[#50e3c2]/10 dark:hover:bg-white/10 hover:border-[#50e3c2]/40 dark:hover:border-white/20 hover:text-slate-600 dark:hover:text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]'}
             ${disabled ? 'cursor-not-allowed opacity-30 grayscale' : 'cursor-pointer active:scale-90'}
+            ${loading ? 'animate-pulse' : ''}
         `}
     >
         <span className="text-[9px] font-black uppercase tracking-[0.1em] py-0.5">
             {label}
         </span>
-        {active ? (
+        {loading ? (
+            <Loader2 size={10} className="animate-spin" />
+        ) : active ? (
             <Check size={10} strokeWidth={4} className="animate-in zoom-in duration-300" />
         ) : (
             <div className="w-1.5 h-1.5 rounded-full bg-slate-300/70 dark:bg-white/20" />
@@ -104,6 +107,8 @@ export const Clinics = () => {
 
     const [activeTab, setActiveTab] = useState('miembros');
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+    const [togglingCap, setTogglingCap] = useState(null); // "roleName-capId"
+    const [togglingConsent, setTogglingConsent] = useState(null); // "memberId-capSlug"
 
     useEffect(() => {
         if (activeClinic?.id) {
@@ -114,9 +119,46 @@ export const Clinics = () => {
 
     const canManageGovernance = useMemo(() => hasRole(['Tech Owner', 'Owner']), [hasRole]);
 
-    const handleMemberConsentToggle = async (memberId, capSlug, currentStatus) => {
-        if (!activeClinic?.id) return;
-        await toggleConsent(activeClinic.id, memberId, capSlug, !currentStatus);
+    // ── GOBERNANZA: toggle permiso de rol ──
+    const handleRoleCapToggle = async (role, cap) => {
+        if (!canManageGovernance) return;
+        const isAssigned = governanceMatrix[role.name]?.some(g => g.resource === cap.slug);
+        const action = isAssigned ? 'revoke' : 'grant';
+        const key = `${role.name}-${cap.id}`;
+        setTogglingCap(key);
+        try {
+            await toggleRolePermission(activeClinic.id, role.name, cap.id, action);
+            toast.success(
+                action === 'grant'
+                    ? `✅ Permiso "${cap.slug.replace('clinic.', '')}" otorgado a ${role.name}`
+                    : `🚫 Permiso "${cap.slug.replace('clinic.', '')}" revocado de ${role.name}`
+            );
+        } catch {
+            toast.error('No se pudo actualizar el permiso');
+        } finally {
+            setTogglingCap(null);
+        }
+    };
+
+    // ── COLABORADORES: toggle consentimiento individual ──
+    const handleMemberConsentToggle = async (member, cap) => {
+        const isGranted = member.consents?.some(
+            c => c.resource_type === cap.slug && c.is_granted
+        );
+        const key = `${member.id}-${cap.slug}`;
+        setTogglingConsent(key);
+        try {
+            await toggleConsent(activeClinic.id, member.id, cap.slug, !isGranted);
+            toast.success(
+                !isGranted
+                    ? `✅ Acceso a "${cap.slug.replace('clinic.', '')}" otorgado a ${member.name}`
+                    : `🚫 Acceso a "${cap.slug.replace('clinic.', '')}" revocado de ${member.name}`
+            );
+        } catch {
+            toast.error('No se pudo actualizar el consentimiento');
+        } finally {
+            setTogglingConsent(null);
+        }
     };
 
     const clinicTabs = [
@@ -161,7 +203,7 @@ export const Clinics = () => {
 
                 <div className="grid grid-cols-12 gap-10 mt-12">
 
-                    {/* Sidebar Explicativo */}
+                    {/* Sidebar */}
                     <aside className="col-span-12 lg:col-span-4 xl:col-span-3">
                         <div className="bg-slate-200/20 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 sticky top-34">
                             <div className={`w-12 h-12 rounded-xl ${tabExplanations[activeTab].bg} border bg-slate-200/30 border-slate-200 dark:border-slate-700 flex items-center justify-center mb-6`}>
@@ -184,6 +226,26 @@ export const Clinics = () => {
                                     <Mail size={16} strokeWidth={3} /> Invitar Miembro
                                 </button>
                             )}
+
+                            {/* Leyenda en tab de roles */}
+                            {activeTab === 'roles' && (
+                                <div className="space-y-3 mt-2">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Leyenda</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-[#50e3c2]/30 border border-[#50e3c2]/50" />
+                                        <span className="text-[10px] text-slate-500">Permiso activo</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-slate-200 dark:bg-slate-700" />
+                                        <span className="text-[10px] text-slate-500">Sin permiso</span>
+                                    </div>
+                                    {!canManageGovernance && (
+                                        <p className="text-[9px] text-slate-400 mt-4 leading-relaxed">
+                                            Solo Owner o Tech Owner pueden modificar la gobernanza.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </aside>
 
@@ -201,53 +263,60 @@ export const Clinics = () => {
                                 {activeTab === 'miembros' && (
                                     <div className="space-y-3">
                                         <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 ml-2">Directorio Profesional</h2>
-
                                         {members.map((member) => {
                                             const rs = ROLE_STYLES[member.role_name] ?? DEFAULT_ROLE_STYLE;
                                             return (
                                                 <div
                                                     key={member.id}
-                                                    className="relative bg-slate-200/10 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/50 p-5 rounded-2xl flex flex-col md:flex-row items-center gap-6 shadow-md hover:shadow-lg hover:bg-slate-300/20 dark:hover:bg-slate-800/80 transition-all overflow-hidden"
+                                                    className="relative bg-slate-200/10 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/50 p-5 rounded-2xl shadow-md hover:shadow-lg transition-all overflow-hidden"
                                                 >
-                                                    {/* Barra lateral de color por rol */}
                                                     <div className={`absolute left-0 top-3 bottom-3 w-[3px] rounded-full ${rs.bar} opacity-60`} />
 
-                                                    {/* Avatar */}
-                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm border shrink-0 ${rs.avatar}`}>
-                                                        {member.name?.charAt(0).toUpperCase()}
+                                                    <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                                                        {/* Avatar + Info */}
+                                                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm border shrink-0 ${rs.avatar}`}>
+                                                                {member.name?.charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="font-bold text-slate-900 dark:text-slate-100 text-base leading-tight">{member.name}</h4>
+                                                                <span className={`inline-flex items-center mt-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${rs.badge}`}>
+                                                                    {member.role_name}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Acciones */}
+                                                        <div className="flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-700 shrink-0">
+                                                            <button className="p-2 text-slate-300 hover:text-[#50e3c2] transition-colors">
+                                                                <Settings size={18} />
+                                                            </button>
+                                                            <ChevronRight className="text-slate-300 dark:text-slate-600" size={20} />
+                                                        </div>
                                                     </div>
 
-                                                    {/* Info */}
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="font-bold text-slate-900 dark:text-slate-100 text-base leading-tight">{member.name}</h4>
-                                                        <span className={`inline-flex items-center mt-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${rs.badge}`}>
-                                                            {member.role_name}
-                                                        </span>
-                                                    </div>
-
-                                                    {/* Pills de permisos */}
-                                                    <div className="flex flex-wrap gap-2 justify-center">
-                                                        {capabilities
-                                                            .filter(c => ['patients.read', 'appointments.read', 'notes.read'].some(slug => c.slug.includes(slug)))
-                                                            .map(cap => {
-                                                                const isGranted = member.consents?.some(c => c.resource_type === cap.slug.split('.').pop() && c.is_granted);
+                                                    {/* Pills de consentimiento — fila separada */}
+                                                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                                                            Accesos Individuales
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {capabilities.map(cap => {
+                                                                const isGranted = member.consents?.some(
+                                                                    c => c.resource_type === cap.slug && c.is_granted
+                                                                );
+                                                                const key = `${member.id}-${cap.slug}`;
                                                                 return (
                                                                     <ResourcePill
                                                                         key={cap.id}
-                                                                        label={cap.slug.split('.').pop()}
+                                                                        label={cap.slug.replace('clinic.', '')}
                                                                         active={isGranted}
-                                                                        onClick={() => handleMemberConsentToggle(member.id, cap.slug, isGranted)}
+                                                                        loading={togglingConsent === key}
+                                                                        onClick={() => handleMemberConsentToggle(member, cap)}
                                                                     />
                                                                 );
                                                             })}
-                                                    </div>
-
-                                                    {/* Acciones */}
-                                                    <div className="flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-700">
-                                                        <button className="p-2 text-slate-300 hover:text-[#50e3c2] transition-colors">
-                                                            <Settings size={18} />
-                                                        </button>
-                                                        <ChevronRight className="text-slate-300 dark:text-slate-600" size={20} />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );
@@ -267,19 +336,23 @@ export const Clinics = () => {
                                                     </div>
                                                     <div>
                                                         <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{role.name}</h3>
-                                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Permisos Base del Sistema</p>
+                                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">
+                                                            {governanceMatrix[role.name]?.length ?? 0} permisos activos
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                                                     {capabilities.map((cap) => {
                                                         const isAssigned = governanceMatrix[role.name]?.some(g => g.resource === cap.slug);
+                                                        const key = `${role.name}-${cap.id}`;
                                                         return (
                                                             <ResourcePill
                                                                 key={`${role.id}-${cap.id}`}
                                                                 label={cap.slug.replace('clinic.', '')}
                                                                 active={isAssigned}
+                                                                loading={togglingCap === key}
                                                                 disabled={!canManageGovernance}
-                                                                onClick={() => { /* toggleRolePermission */ }}
+                                                                onClick={() => handleRoleCapToggle(role, cap)}
                                                             />
                                                         );
                                                     })}

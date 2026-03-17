@@ -20,6 +20,7 @@ export const getClinicDirectory = async (req, res) => {
         const membersQuery = `
             SELECT 
                 m.id, m.name, u.email, r.name as role_name, m.user_id,
+                m.sidebar_hidden,
                 COALESCE(
                     (SELECT json_agg(DISTINCT c2.slug)
                     FROM role_capabilities rc
@@ -78,7 +79,7 @@ export const getGovernance = async (req, res) => {
     }
 };
 
-/** 3. Crear y Enviar Invitación (Mantiene soporte JSX para Email) */
+/** 3. Crear y Enviar Invitación */
 export const createInvitation = async (req, res) => {
     const { clinicId } = req.params;
     const { email, role_id, invited_by } = req.body;
@@ -229,5 +230,30 @@ export const getMySovereigntyStatus = async (req, res) => {
     } catch (error) {
         console.error('❌ Error en getMySovereigntyStatus:', error);
         res.status(500).json({ error: 'Error al obtener estado' });
+    }
+};
+
+/** 9. Actualizar preferencias de navegación del sidebar por miembro */
+export const updateMemberSidebar = async (req, res) => {
+    const { memberId } = req.params;
+    const { sidebar_hidden } = req.body;
+
+    try {
+        const mId = parseInt(memberId, 10);
+        if (isNaN(mId)) return res.status(400).json({ error: 'ID de miembro inválido' });
+
+        if (!Array.isArray(sidebar_hidden)) {
+            return res.status(400).json({ error: 'sidebar_hidden debe ser un array' });
+        }
+
+        await pool.query(
+            `UPDATE members SET sidebar_hidden = $1 WHERE id = $2`,
+            [sidebar_hidden, mId]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error en updateMemberSidebar:', error.message);
+        res.status(500).json({ error: 'Error al actualizar preferencias de navegación' });
     }
 };

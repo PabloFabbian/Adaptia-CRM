@@ -1,4 +1,3 @@
-import { Copy, ClipboardPaste, Mail, X } from 'lucide-react';
 import { MemberCard } from './MemberCard';
 
 export const MembersDirectory = ({
@@ -14,6 +13,7 @@ export const MembersDirectory = ({
     onPaste,
     onClearCopy,
     onInvite,
+    onSidebarUpdate,
 }) => (
     <div className="space-y-3">
         <div className="flex items-center justify-between mb-6">
@@ -35,6 +35,7 @@ export const MembersDirectory = ({
                 copiedConfig={copiedConfig}
                 onCopy={onCopy}
                 onPaste={onPaste}
+                onSidebarUpdate={onSidebarUpdate}
             />
         ))}
 

@@ -16,9 +16,8 @@ export const useClinics = () => {
         let token = localStorage.getItem('token') || localStorage.getItem('adaptia_token');
 
         if (!token && savedUser) {
-            try {
-                token = JSON.parse(savedUser)?.token;
-            } catch (e) { token = null; }
+            try { token = JSON.parse(savedUser)?.token; }
+            catch (e) { token = null; }
         }
         return token ? { 'Authorization': `Bearer ${token}` } : {};
     }, []);
@@ -32,9 +31,7 @@ export const useClinics = () => {
                 headers: { ...getAuthHeader() }
             });
             const data = await response.json();
-
             if (!response.ok) throw new Error(data.error || 'Error al cargar directorio');
-
             setMembers(data.members || []);
             setInvitations(data.invitations || []);
         } catch (error) {
@@ -77,19 +74,12 @@ export const useClinics = () => {
 
     /** 3. Toggle de Permisos de Rol (Gobernanza) */
     const toggleRolePermission = async (clinicId, roleName, capabilityId, action) => {
-        setLoading(true); // Bloqueamos para evitar colisiones
+        setLoading(true);
         try {
             const response = await fetch(`${API_BASE_URL}/api/clinics/${clinicId}/permissions/toggle`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...getAuthHeader()
-                },
-                body: JSON.stringify({
-                    role_name: roleName,
-                    capability_id: capabilityId,
-                    action: action
-                })
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ role_name: roleName, capability_id: capabilityId, action })
             });
 
             if (!response.ok) throw new Error('No se pudo actualizar el permiso del rol');
@@ -124,25 +114,16 @@ export const useClinics = () => {
             return false;
         }
 
-        setLoading(true); // VITAL: Sincroniza con el estado de carga del componente
+        setLoading(true);
         try {
             const response = await fetch(`${API_BASE_URL}/api/clinics/${clinicId}/members/${memberId}/consent`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...getAuthHeader()
-                },
-                body: JSON.stringify({
-                    resourceType: resourceType,
-                    is_granted: isGranted
-                })
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ resourceType, is_granted: isGranted })
             });
 
             const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Error al actualizar soberanía');
-            }
+            if (!response.ok) throw new Error(data.error || 'Error al actualizar soberanía');
 
             // Actualización optimista del estado local de miembros
             setMembers(prev => prev.map(m => {
@@ -164,7 +145,33 @@ export const useClinics = () => {
             console.error("❌ Error en toggleConsent:", error);
             throw error;
         } finally {
-            setLoading(false); // DESBLOQUEO: Libera el PermissionToggle
+            setLoading(false);
+        }
+    };
+
+    /** 5. Actualizar preferencias de navegación del sidebar por miembro */
+    const updateMemberSidebar = async (clinicId, memberId, hiddenSlugs) => {
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/api/clinics/${clinicId}/members/${memberId}/sidebar`,
+                {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                    body: JSON.stringify({ sidebar_hidden: hiddenSlugs })
+                }
+            );
+
+            if (!response.ok) throw new Error('Error al actualizar sidebar');
+
+            // Actualización optimista del estado local
+            setMembers(prev => prev.map(m =>
+                m.id === memberId ? { ...m, sidebar_hidden: hiddenSlugs } : m
+            ));
+
+            return true;
+        } catch (error) {
+            console.error("❌ Error en updateMemberSidebar:", error);
+            throw error;
         }
     };
 
@@ -178,6 +185,7 @@ export const useClinics = () => {
         fetchDirectory,
         fetchGovernance,
         toggleRolePermission,
-        toggleConsent
+        toggleConsent,
+        updateMemberSidebar,
     };
 };

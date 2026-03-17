@@ -28,11 +28,15 @@ const clinicTabs = [
 ];
 
 export const Clinics = () => {
-    const { activeClinic, hasRole, loading: authLoading } = useAuth();
+    const {
+        activeClinic, hasRole, loading: authLoading,
+        user, updateSidebarHidden  // ← updateSidebarHidden del contexto
+    } = useAuth();
+
     const {
         members, roles: availableRoles, capabilities, governanceMatrix,
         loading: dataLoading, fetchDirectory, fetchGovernance,
-        toggleRolePermission, toggleConsent,
+        toggleRolePermission, toggleConsent, updateMemberSidebar,
     } = useClinics();
 
     const [activeTab, setActiveTab] = useState('miembros');
@@ -73,8 +77,12 @@ export const Clinics = () => {
         if (!copiedConfig) return;
         const roleCaps = target.role_capabilities || [];
         const consentMap = Object.fromEntries((target.consents || []).map(c => [c.resource_type, c.is_granted]));
-        const toRevoke = capabilities.filter(c => !roleCaps.includes(c.slug) && consentMap[c.slug] === true && !copiedConfig.slugs.includes(c.slug));
-        const toGrant = capabilities.filter(c => !roleCaps.includes(c.slug) && copiedConfig.slugs.includes(c.slug));
+        const toRevoke = capabilities.filter(c =>
+            !roleCaps.includes(c.slug) && consentMap[c.slug] === true && !copiedConfig.slugs.includes(c.slug)
+        );
+        const toGrant = capabilities.filter(c =>
+            !roleCaps.includes(c.slug) && copiedConfig.slugs.includes(c.slug)
+        );
         try {
             for (const cap of toRevoke) await toggleConsent(activeClinic.id, target.id, cap.slug, false);
             for (const cap of toGrant) await toggleConsent(activeClinic.id, target.id, cap.slug, true);
@@ -109,6 +117,21 @@ export const Clinics = () => {
                 : `🚫 "${CAP_LABELS[cap.slug]?.label}" revocado de ${member.name}`);
         } catch { toast.error('No se pudo actualizar el consentimiento'); }
         finally { setTogglingConsent(null); }
+    };
+
+    const handleSidebarUpdate = async (memberId, hiddenSlugs) => {
+        try {
+            await updateMemberSidebar(activeClinic.id, memberId, hiddenSlugs);
+            toast.success('Navegación actualizada');
+
+            // Si el Owner editó su propio sidebar, actualizar el contexto en tiempo real
+            const editedMember = members.find(m => m.id === memberId);
+            if (editedMember?.user_id === user?.id) {
+                updateSidebarHidden(hiddenSlugs); // ← limpio, sin tocar localStorage manualmente
+            }
+        } catch {
+            toast.error('No se pudo actualizar la navegación');
+        }
     };
 
     if (authLoading) return (
@@ -224,6 +247,7 @@ export const Clinics = () => {
                                         onPaste={handlePaste}
                                         onClearCopy={() => setCopiedConfig(null)}
                                         onInvite={() => setInviteModal(true)}
+                                        onSidebarUpdate={handleSidebarUpdate}
                                     />
                                 )}
 

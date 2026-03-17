@@ -14,7 +14,6 @@ export const AuthProvider = ({ children }) => {
     const fetchMyPermissions = useCallback(async (roleId, clinicId) => {
         if (roleId === undefined || roleId === null || !clinicId) return;
 
-        // Buscar token en todas las fuentes posibles
         const token =
             localStorage.getItem('adaptia_token') ||
             localStorage.getItem('token') ||
@@ -43,18 +42,16 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
-    /** 2. Sincronizar Soberanía y member_id 
-     * MEJORA: Acepta un explicitToken para evitar el error 401 durante el login
+    /** 2. Sincronizar Soberanía y member_id
+     * Acepta un explicitToken para evitar el error 401 durante el login
      */
     const refreshUser = useCallback(async (explicitToken = null) => {
-        // Buscamos el token en orden de prioridad
         const savedUserRaw = localStorage.getItem('adaptia_user');
         let token = explicitToken || localStorage.getItem('adaptia_token') || localStorage.getItem('token');
 
         if (!token && savedUserRaw) {
-            try {
-                token = JSON.parse(savedUserRaw)?.token;
-            } catch (e) { token = null; }
+            try { token = JSON.parse(savedUserRaw)?.token; }
+            catch (e) { token = null; }
         }
 
         if (!token) return;
@@ -107,9 +104,7 @@ export const AuthProvider = ({ children }) => {
         await refreshUser();
     }, [fetchMyPermissions, refreshUser]);
 
-    /** 4. Login 
-     * MEJORA: Sincronización inmediata de estados
-     */
+    /** 4. Login — Sincronización inmediata de estados */
     const login = async (userData) => {
         try {
             const clinicRole = userData.activeClinic?.role_id;
@@ -118,7 +113,6 @@ export const AuthProvider = ({ children }) => {
                 : null;
 
             const memberships = userData.memberships || (userData.activeClinic ? [userData.activeClinic] : []);
-
             const normalizedUser = {
                 ...userData,
                 role_id: numericRoleId,
@@ -134,17 +128,14 @@ export const AuthProvider = ({ children }) => {
 
             // 2. Configurar clínica activa
             if (userData.activeClinic) {
-                const clinicData = {
-                    ...userData.activeClinic,
-                    role_id: numericRoleId
-                };
+                const clinicData = { ...userData.activeClinic, role_id: numericRoleId };
                 setActiveClinic(clinicData);
                 localStorage.setItem('adaptia_active_clinic', JSON.stringify(clinicData));
 
                 // 3. Cargas en paralelo para velocidad
                 await Promise.all([
                     fetchMyPermissions(clinicData.role_id, clinicData.id),
-                    refreshUser(userData.token) // <--- Pasamos el token directamente aquí
+                    refreshUser(userData.token)
                 ]);
             }
 
@@ -165,7 +156,7 @@ export const AuthProvider = ({ children }) => {
 
                 if (savedUser && savedUser !== "undefined") {
                     const parsedUser = JSON.parse(savedUser);
-                    setUser(parsedUser);
+                    setUser(parsedUser); // sidebar_hidden ya viene dentro del objeto guardado
 
                     if (savedClinic && savedClinic !== "undefined") {
                         const clinic = JSON.parse(savedClinic);
@@ -215,10 +206,21 @@ export const AuthProvider = ({ children }) => {
         });
     }, [activeClinic]);
 
+    /** 8. Actualizar sidebar_hidden del usuario logueado en tiempo real */
+    const updateSidebarHidden = useCallback((hiddenSlugs) => {
+        setUser(prev => {
+            if (!prev) return prev;
+            const updatedUser = { ...prev, sidebar_hidden: hiddenSlugs };
+            localStorage.setItem('adaptia_user', JSON.stringify(updatedUser));
+            return updatedUser;
+        });
+    }, []);
+
     return (
         <AuthContext.Provider value={{
             user, login, logout, loading, activeClinic,
-            userPermissions, switchClinic, hasRole, can, refreshUser
+            userPermissions, switchClinic, hasRole, can, refreshUser,
+            updateSidebarHidden,
         }}>
             {!loading && children}
         </AuthContext.Provider>

@@ -7,7 +7,8 @@ import {
     toggleRolePermission,
     createInvitation,
     toggleMemberConsent,
-    getMySovereigntyStatus
+    getMySovereigntyStatus,
+    updateMemberSidebar          // ← nuevo
 } from './clinics.controller.js';
 import { getRoles } from './roles.js';
 import { authenticateToken } from '../auth/auth.middleware.js';
@@ -73,6 +74,16 @@ router.post('/:clinicId/permissions/toggle',
 router.patch('/:clinicId/members/:memberId/consent',
     authenticateToken,
     toggleMemberConsent
+);
+
+/**
+ * 5. PREFERENCIAS DE NAVEGACIÓN
+ * Owner/Tech Owner pueden personalizar qué items del sidebar ve cada miembro
+ */
+router.patch('/:clinicId/members/:memberId/sidebar',
+    authenticateToken,
+    requireCapability(CAPABILITIES.MANAGE_CLINIC),
+    updateMemberSidebar
 );
 
 export default router;

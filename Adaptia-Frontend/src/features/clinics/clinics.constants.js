@@ -19,18 +19,20 @@ export const CAP_LABELS = {
 };
 
 export const SIDEBAR_ITEMS = [
+    // Gestión Clínica
     { label: 'Inicio', cap: null, always: true },
     { label: 'Pacientes', cap: 'clinic.patients.read' },
     { label: 'Agenda y Turnos', cap: 'clinic.appointments.read' },
     { label: 'Notas Clínicas', cap: 'clinic.notes.read' },
+    // Soberanía
+    { label: 'Compartir Recursos', cap: null, always: true },
+    { label: 'Supervisión', cap: null, always: true },
+    // Administración
+    { label: 'Honorarios', cap: 'manage_clinic' },
+    { label: 'Gobernanza', cap: 'manage_clinic' },
     { label: 'Categorías', cap: 'clinic.categories.read' },
     { label: 'Nueva Cita', cap: 'clinic.appointments.write' },
     { label: 'Alta Paciente', cap: 'clinic.patients.write' },
-    { label: 'Gobernanza', cap: 'manage_clinic' },
-    { label: 'Honorarios', cap: 'manage_clinic' },
-    { label: 'Compartir Recursos', cap: null, always: true },
-    { label: 'Supervisión', cap: null, always: true },
-    { label: 'Configuración', cap: null, always: true },
 ];
 
 export const ROLE_STYLES = {

@@ -218,7 +218,9 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={{
-            user, login, logout, loading, activeClinic,
+            user,
+            token: localStorage.getItem('adaptia_token') || localStorage.getItem('token') || user?.token, // <--- ÚNICO AGREGADO
+            login, logout, loading, activeClinic,
             userPermissions, switchClinic, hasRole, can, refreshUser,
             updateSidebarHidden,
         }}>

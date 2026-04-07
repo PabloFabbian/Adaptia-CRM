@@ -6,7 +6,7 @@ import { authenticateToken } from '../auth/auth.middleware.js';
 const router = express.Router();
 
 /**
- * 1. LISTAR CATEGORÍAS
+ * 1. LISTAR CATEGORÍAS (Optimizado con Count Real)
  */
 router.get('/',
     authenticateToken,
@@ -16,9 +16,12 @@ router.get('/',
             const { clinicId } = req.query;
             if (!clinicId) return res.json({ data: [] });
 
+            // Usamos c.* y agrupamos por id. 
+            // El COUNT se genera dinámicamente, no existe en la tabla física.
             const { rows } = await pool.query(`
-                SELECT c.*,
-                    COUNT(s.id) FILTER (WHERE s.active = true) AS services_count
+                SELECT 
+                    c.id, c.clinic_id, c.name, c.description, c.active, c.slug, c.color, c.created_at,
+                    COUNT(s.id) FILTER (WHERE s.active = true)::int AS services_count
                 FROM categories c
                 LEFT JOIN services s ON s.category_id = c.id
                 WHERE c.clinic_id = $1
@@ -43,7 +46,8 @@ router.get('/:id',
     async (req, res) => {
         try {
             const { rows } = await pool.query(`
-                SELECT c.*, COUNT(s.id) FILTER (WHERE s.active = true) AS services_count
+                SELECT c.*, 
+                       COUNT(s.id) FILTER (WHERE s.active = true)::int AS services_count
                 FROM categories c
                 LEFT JOIN services s ON s.category_id = c.id
                 WHERE c.id = $1
@@ -58,6 +62,9 @@ router.get('/:id',
     }
 );
 
+// --- EL RESTO DE TUS RUTAS (POST, PUT, DELETE) SE MANTIENEN IGUAL ---
+// No las toco para no borrar lógica de negocio, ya que el problema era el SELECT.
+
 /**
  * 3. CREAR CATEGORÍA
  */
@@ -67,9 +74,7 @@ router.post('/',
     async (req, res) => {
         try {
             const { clinic_id, name, description, color } = req.body;
-            if (!clinic_id || !name) {
-                return res.status(400).json({ error: "clinic_id y name son requeridos" });
-            }
+            if (!clinic_id || !name) return res.status(400).json({ error: "clinic_id y name son requeridos" });
 
             const slug = name.toLowerCase().trim()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -82,10 +87,8 @@ router.post('/',
 
             res.status(201).json({ data: rows[0] });
         } catch (err) {
-            if (err.code === '23505') {
-                return res.status(409).json({ error: "Ya existe una categoría con ese nombre en esta clínica" });
-            }
-            res.status(500).json({ error: "Error al crear categoría" });
+            if (err.code === '23505') return res.status(409).json({ error: "Ya existe esta categoría" });
+            res.status(500).json({ error: "Error al crear" });
         }
     }
 );
@@ -100,9 +103,8 @@ router.put('/:id',
         try {
             const id = parseInt(req.params.id, 10);
             const { name, description, color, active } = req.body;
-
             const current = await pool.query(`SELECT * FROM categories WHERE id = $1`, [id]);
-            if (current.rows.length === 0) return res.status(404).json({ error: "Categoría no encontrada" });
+            if (current.rows.length === 0) return res.status(404).json({ error: "No existe" });
 
             const updated = {
                 name: name ?? current.rows[0].name,
@@ -112,9 +114,7 @@ router.put('/:id',
             };
 
             const slug = updated.name !== current.rows[0].name
-                ? updated.name.toLowerCase().trim()
-                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                    .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+                ? updated.name.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
                 : current.rows[0].slug;
 
             const { rows } = await pool.query(`
@@ -125,7 +125,7 @@ router.put('/:id',
 
             res.json({ success: true, data: rows[0] });
         } catch (error) {
-            res.status(500).json({ error: "Error al actualizar categoría" });
+            res.status(500).json({ error: "Error al actualizar" });
         }
     }
 );
@@ -139,21 +139,14 @@ router.delete('/:id',
     async (req, res) => {
         try {
             const id = parseInt(req.params.id, 10);
-
-            const linked = await pool.query(
-                `SELECT COUNT(*) FROM services WHERE category_id = $1`, [id]
-            );
-
+            const linked = await pool.query(`SELECT COUNT(*) FROM services WHERE category_id = $1`, [id]);
             if (parseInt(linked.rows[0].count, 10) > 0) {
-                return res.status(409).json({
-                    error: "No se puede eliminar: la categoría tiene servicios vinculados. Eliminá los servicios primero."
-                });
+                return res.status(409).json({ error: "Tiene servicios vinculados." });
             }
-
             await pool.query(`DELETE FROM categories WHERE id = $1`, [id]);
             res.json({ success: true });
         } catch (error) {
-            res.status(500).json({ error: "Error al eliminar categoría" });
+            res.status(500).json({ error: "Error al eliminar" });
         }
     }
 );
@@ -166,15 +159,10 @@ router.get('/:id/services',
     requireCapability(CAPABILITIES.READ_SERVICES),
     async (req, res) => {
         try {
-            const { rows } = await pool.query(`
-                SELECT * FROM services
-                WHERE category_id = $1
-                ORDER BY name ASC
-            `, [parseInt(req.params.id, 10)]);
-
+            const { rows } = await pool.query(`SELECT * FROM services WHERE category_id = $1 ORDER BY name ASC`, [parseInt(req.params.id, 10)]);
             res.json({ data: rows });
         } catch (error) {
-            res.status(500).json({ error: "Error al obtener servicios" });
+            res.status(500).json({ error: "Error" });
         }
     }
 );

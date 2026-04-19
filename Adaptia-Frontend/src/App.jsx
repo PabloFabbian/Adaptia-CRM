@@ -119,7 +119,7 @@ function App() {
                 <BookingPage />
               </ProtectedRoute>
             } />
-            <Route path="alta-paciente" element={
+            <Route path="nuevo-paciente" element={
               <ProtectedRoute permission={CAP.WRITE_PATIENTS}>
                 <NewPatient />
               </ProtectedRoute>

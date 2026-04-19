@@ -1,9 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
-import {
-    Users, UserPlus, Search, Filter, Mail, Phone,
-    ShieldCheck, ChevronRight, Loader2, ShieldAlert, Eye
-} from 'lucide-react';
+import { Users, UserPlus, Search, Filter, Mail, Phone, ShieldCheck, ChevronRight, Loader2, ShieldAlert, Eye, Check } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 // Hooks y Contexto
@@ -21,6 +19,9 @@ export const PatientsPage = () => {
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+    const [filterOwnership, setFilterOwnership] = useState('all'); // all, mine, others
+    const [filterAccess, setFilterAccess] = useState('all'); // all, full, read
+    const [showFilterMenu, setShowFilterMenu] = useState(false);
     const [, setSearchParams] = useSearchParams();
 
     const { patients, loading, refresh } = usePatients(
@@ -88,12 +89,28 @@ export const PatientsPage = () => {
     };
 
     const filteredPatients = useMemo(() => {
-        return (patients || []).filter(p =>
-            (p.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (p.dni?.includes(searchTerm)) ||
-            (p.email?.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-    }, [patients, searchTerm]);
+        return (patients || []).filter(p => {
+            // Filtro de búsqueda
+            const matchesSearch = (
+                (p.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (p.dni?.includes(searchTerm)) ||
+                (p.email?.toLowerCase().includes(searchTerm.toLowerCase()))
+            );
+
+            // Filtro de propiedad
+            let matchesOwnership = true;
+            if (filterOwnership === 'mine') matchesOwnership = p.owner_member_id === user?.id;
+            if (filterOwnership === 'others') matchesOwnership = p.owner_member_id !== user?.id;
+
+            // Filtro de acceso
+            let matchesAccess = true;
+            const access = getAccessLevel(p);
+            if (filterAccess === 'full') matchesAccess = access === 'Full';
+            if (filterAccess === 'read') matchesAccess = access === 'Read';
+
+            return matchesSearch && matchesOwnership && matchesAccess;
+        });
+    }, [patients, searchTerm, filterOwnership, filterAccess, user?.id]);
 
     if (authLoading) return (
         <div className="h-screen flex items-center justify-center bg-white dark:bg-[#0f172a]">
@@ -144,9 +161,98 @@ export const PatientsPage = () => {
                             className="w-full pl-12 pr-6 py-4 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-[#50e3c2] dark:focus:border-[#50e3c2] transition-all dark:text-white placeholder:text-slate-400"
                         />
                     </div>
-                    <button className="px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:text-[#50e3c2] transition-all">
-                        <Filter size={18} />
-                    </button>
+
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowFilterMenu(!showFilterMenu)}
+                            className={`px-4 h-full bg-white dark:bg-slate-800 border rounded-xl transition-all flex items-center justify-center gap-2 hover:cursor-pointer ${showFilterMenu || filterOwnership !== 'all' || filterAccess !== 'all'
+                                ? 'border-[#50e3c2] text-[#50e3c2]'
+                                : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:text-[#50e3c2]'
+                                }`}
+                        >
+                            <Filter size={18} />
+                            {(filterOwnership !== 'all' || filterAccess !== 'all') && (
+                                <span className="w-2 h-2 rounded-full bg-[#50e3c2] animate-pulse" />
+                            )}
+                        </button>
+
+                        <AnimatePresence>
+                            {showFilterMenu && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setShowFilterMenu(false)}
+                                    />
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute right-0 mt-3 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                                    >
+                                        <div className="p-5 space-y-6">
+                                            {/* Sección: Propiedad */}
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Responsabilidad</p>
+                                                <div className="space-y-1">
+                                                    {[
+                                                        { id: 'all', label: 'Todos los pacientes' },
+                                                        { id: 'mine', label: 'Mis Pacientes' },
+                                                        { id: 'others', label: 'Otros Profesionales' }
+                                                    ].map((opt) => (
+                                                        <button
+                                                            key={opt.id}
+                                                            onClick={() => setFilterOwnership(opt.id)}
+                                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all hover:cursor-pointer ${filterOwnership === opt.id
+                                                                ? 'bg-[#50e3c2]/10 text-[#50e3c2] font-bold'
+                                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                                                }`}
+                                                        >
+                                                            {opt.label}
+                                                            {filterOwnership === opt.id && <Check size={14} strokeWidth={3} />}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Sección: Acceso */}
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Nivel de Acceso</p>
+                                                <div className="space-y-1">
+                                                    {[
+                                                        { id: 'all', label: 'Cualquier nivel' },
+                                                        { id: 'full', label: 'Acceso Completo' },
+                                                        { id: 'read', label: 'Solo Lectura' }
+                                                    ].map((opt) => (
+                                                        <button
+                                                            key={opt.id}
+                                                            onClick={() => setFilterAccess(opt.id)}
+                                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all hover:cursor-pointer ${filterAccess === opt.id
+                                                                ? 'bg-[#50e3c2]/10 text-[#50e3c2] font-bold'
+                                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                                                }`}
+                                                        >
+                                                            {opt.label}
+                                                            {filterAccess === opt.id && <Check size={14} strokeWidth={3} />}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => {
+                                                    setFilterOwnership('all');
+                                                    setFilterAccess('all');
+                                                }}
+                                                className="w-full pt-4 mt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 transition-colors text-center hover:cursor-pointer"
+                                            >
+                                                Restablecer filtros
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
 
                 {/* Tabla Flat */}

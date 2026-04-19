@@ -158,7 +158,7 @@ export const Sidebar = () => {
                         <NavItem to="/gobernanza" label="Gobernanza" icon={Building2} permission={CAP.MANAGE_CLINIC} navCap="manage_clinic" />
                         <NavItem to="/categorias" label="Categorías" icon={Tag} permission={CAP.READ_CATEGORIES} navCap="clinic.categories.read" />
                         <NavItem to="/nueva-cita" label="Nueva Cita" icon={PlusCircle} permission={CAP.WRITE_APPOINTMENTS} navCap="clinic.appointments.write" />
-                        <NavItem to="/alta-paciente" label="Alta Paciente" icon={UserPlus} permission={CAP.WRITE_PATIENTS} navCap="clinic.patients.write" />
+                        <NavItem to="/nuevo-paciente" label="Nuevo Paciente" icon={UserPlus} permission={CAP.WRITE_PATIENTS} navCap="clinic.patients.write" />
                     </NavSection>
                 </div>
 

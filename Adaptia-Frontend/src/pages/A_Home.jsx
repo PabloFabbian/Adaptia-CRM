@@ -58,7 +58,7 @@ const Dashboard = ({ user, appointments = [] }) => {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => navigate('/calendario')}
-                            className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors active:scale-95"
+                            className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors active:scale-95 hover:cursor-pointer"
                         >
                             <Calendar size={18} className="text-[#50e3c2]" />
                             Agenda
@@ -67,7 +67,7 @@ const Dashboard = ({ user, appointments = [] }) => {
                         {can('clinic.patients.write') && (
                             <button
                                 onClick={() => navigate('/nuevo-paciente')}
-                                className="flex items-center gap-2 bg-slate-900 dark:bg-[#50e3c2] text-white dark:text-slate-900 px-5 py-3 rounded-xl text-sm font-bold hover:opacity-90 transition-all active:scale-95"
+                                className="flex items-center gap-2 bg-slate-900 dark:bg-[#50e3c2] text-white dark:text-slate-900 px-5 py-3 rounded-xl text-sm font-bold hover:opacity-90 transition-all active:scale-95 hover:cursor-pointer"
                             >
                                 <Plus size={18} />
                                 Nuevo Paciente
@@ -131,8 +131,8 @@ const Dashboard = ({ user, appointments = [] }) => {
                     <button
                         onClick={() => setIsFocusMode(!isFocusMode)}
                         className={`text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-lg border transition-all flex items-center gap-2 ${isFocusMode
-                            ? 'bg-[#50e3c2] border-[#50e3c2] text-slate-900'
-                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500'
+                            ? 'bg-[#50e3c2] border-[#50e3c2] text-slate-900 hover:cursor-pointer hover:bg-slate-50 dark:hover:bg-[#50e3c2]/80'
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700'
                             }`}
                     >
                         <Zap size={12} className={isFocusMode ? 'fill-slate-900' : ''} />

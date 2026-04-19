@@ -29,7 +29,7 @@ const ExpandableContent = ({ text }) => {
             {isLongText && (
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-500 hover:text-orange-600 mt-2"
+                    className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-orange-500 hover:text-orange-600 mt-2 hover:cursor-pointer"
                 >
                     {isExpanded ? <>Ver menos <ChevronUp size={12} /></> : <>Leer detalle completo <ChevronDown size={12} /></>}
                 </button>
@@ -185,7 +185,10 @@ export const PatientHistoryPage = () => {
         <div className="max-w-5xl mx-auto space-y-8 p-4 bg-transparent">
             {/* CABECERA */}
             <div className="flex items-center justify-between mb-4">
-                <button onClick={() => navigate('/pacientes')} className="group flex items-center gap-2 text-gray-400 hover:text-orange-500 transition-colors">
+                <button
+                    onClick={() => navigate('/pacientes')}
+                    className="group flex items-center gap-2 text-gray-400 hover:text-orange-500 transition-colors hover:cursor-pointer"
+                >
                     <ArrowLeft size={18} />
                     <span className="text-xs font-bold uppercase tracking-widest">Volver</span>
                 </button>
@@ -211,13 +214,32 @@ export const PatientHistoryPage = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button onClick={handleExportPDF} disabled={isExporting} className="flex items-center gap-2 px-6 py-2.5 bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-slate-700 rounded-full text-xs font-bold hover:bg-gray-100 transition-all">
-                            {isExporting ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} className="text-orange-500" />}
+                        {/* BOTÓN EXPORTAR - Más elegante y con hover definido */}
+                        <button
+                            onClick={handleExportPDF}
+                            disabled={isExporting}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-full text-[11px] font-semibold tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer shadow-sm"
+                        >
+                            {isExporting ? (
+                                <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                                <FileText size={14} className="text-orange-500" />
+                            )}
                             Exportar PDF
                         </button>
+
+                        {/* BOTÓN GUARDAR - Estilo Adaptia (Cian/Turquesa) */}
                         {canEdit && (
-                            <button onClick={handleSaveProfile} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-xs font-bold transition-all shadow-lg shadow-teal-600/20">
-                                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                            <button
+                                onClick={handleSaveProfile}
+                                disabled={isSaving}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 dark:bg-[#50e3c2] text-white dark:text-slate-900 rounded-full text-[11px] font-semibold tracking-widest hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer shadow-lg shadow-teal-500/20"
+                            >
+                                {isSaving ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                    <Save size={14} strokeWidth={2.5} />
+                                )}
                                 Guardar Perfil
                             </button>
                         )}
@@ -226,34 +248,48 @@ export const PatientHistoryPage = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
                     <div className="md:col-span-2 space-y-6">
-                        <div className="bg-gray-50 dark:bg-slate-800/40 p-5 rounded-[1.5rem] border border-gray-100 dark:border-slate-700/50">
-                            <label className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2 block">Motivo de Consulta</label>
+                        <div className={`bg-gray-50 dark:bg-slate-800/40 p-5 rounded-[1.5rem] border transition-all duration-300 ${canEdit
+                            ? 'border-indigo-100 dark:border-indigo-500/20 focus-within:border-indigo-300 dark:focus-within:border-indigo-500/50 shadow-sm'
+                            : 'border-gray-100 dark:border-slate-700/50'
+                            }`}>
+                            <label className={`text-[10px] font-black uppercase tracking-widest mb-2 block transition-colors ${canEdit ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'
+                                }`}>
+                                Motivo de Consulta
+                            </label>
                             <textarea
                                 ref={motivoRef}
                                 readOnly={!canEdit}
                                 value={profile.motivo_consulta}
                                 onChange={(e) => setProfile({ ...profile, motivo_consulta: e.target.value })}
-                                className="w-full bg-transparent text-sm text-gray-700 dark:text-slate-200 focus:outline-none resize-none leading-relaxed"
+                                className={`w-full bg-transparent text-sm text-gray-700 dark:text-slate-200 focus:outline-none resize-none leading-relaxed transition-all ${canEdit ? 'cursor-pointer' : 'cursor-default'
+                                    }`}
                                 rows="1"
-                                placeholder="Sin información registrada"
+                                placeholder={canEdit ? "Escribe el motivo..." : "Sin información registrada"}
                             />
                         </div>
-                        <div className="px-5">
+                        <div className={`p-5 rounded-[1.5rem] border transition-all duration-300 ${canEdit
+                            ? 'bg-white dark:bg-slate-900 border-dashed border-gray-200 dark:border-slate-700 focus-within:border-indigo-300'
+                            : 'bg-transparent border-transparent'
+                            }`}>
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Antecedentes</label>
                             <textarea
                                 ref={antecedentesRef}
                                 readOnly={!canEdit}
                                 value={profile.antecedentes}
                                 onChange={(e) => setProfile({ ...profile, antecedentes: e.target.value })}
-                                className="w-full bg-transparent text-sm italic text-gray-500 dark:text-gray-400 focus:outline-none resize-none leading-relaxed"
+                                className={`w-full bg-transparent text-sm italic text-gray-500 dark:text-gray-400 focus:outline-none resize-none leading-relaxed ${canEdit ? 'cursor-pointer' : 'cursor-default'
+                                    }`}
                                 rows="1"
-                                placeholder="Sin antecedentes"
+                                placeholder={canEdit ? "Escribe antecedentes..." : "Sin antecedentes"}
                             />
                         </div>
                     </div>
 
-                    <div className="bg-red-50 dark:bg-red-500/10 p-6 rounded-[2rem] border border-red-100 dark:border-red-500/20">
-                        <div className="flex items-center gap-2 mb-3 text-red-500">
+                    <div className={`p-6 rounded-[2rem] border transition-all duration-300 ${canEdit
+                        ? 'bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20 focus-within:border-red-400'
+                        : 'bg-red-50/50 dark:bg-red-500/5 border-red-50/50 dark:border-red-500/10'
+                        }`}>
+                        <div className={`flex items-center gap-2 mb-3 ${canEdit ? 'text-red-500' : 'text-red-300 dark:text-red-900/40'}`}>
                             <Pill size={16} />
                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Medicación</span>
                         </div>
@@ -262,9 +298,10 @@ export const PatientHistoryPage = () => {
                             readOnly={!canEdit}
                             value={profile.medicacion}
                             onChange={(e) => setProfile({ ...profile, medicacion: e.target.value })}
-                            className="w-full bg-transparent text-sm font-bold text-gray-800 dark:text-slate-100 focus:outline-none resize-none"
+                            className={`w-full bg-transparent text-sm font-bold text-gray-800 dark:text-slate-100 focus:outline-none resize-none ${canEdit ? 'cursor-text' : 'cursor-default'
+                                }`}
                             rows="1"
-                            placeholder="No referida"
+                            placeholder={canEdit ? "Registrar medicación..." : "No referida"}
                         />
                     </div>
                 </div>

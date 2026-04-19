@@ -14,17 +14,13 @@ import {
 } from 'lucide-react';
 
 const tabExplanations = {
-    inicio: { title: "Ecosistema", description: "Vista holística de tu clínica. Actividad en tiempo real y salud operativa.", icon: <Activity size={20} />, color: "text-[#50e3c2]" },
-    miembros: { title: "Colaboradores", description: "Gestión de red profesional. Cada especialista es soberano de su acceso.", icon: <UserPlus size={20} />, color: "text-blue-500" },
-    roles: { title: "Gobernanza", description: "Defina las capacidades globales de cada rol. Base para todos los miembros.", icon: <ShieldCheck size={20} />, color: "text-purple-500" },
-    salas: { title: "Espacios", description: "Optimice el uso de sus instalaciones físicas y consultorios.", icon: <Layout size={20} />, color: "text-orange-500" },
+    miembros: { title: "Colaboradores y Red", description: "Gestione su red profesional de especialistas. Configure la visibilidad de la navegación y los permisos de acceso individual para cada miembro de su equipo clínico.", icon: <UserPlus size={20} />, color: "text-blue-500" },
+    roles: { title: "Matriz de Gobernanza", description: "Defina las capacidades globales por nivel jerárquico. Esta matriz establece los permisos base que se aplican automáticamente a todos los miembros según su rol asignado.", icon: <ShieldCheck size={20} />, color: "text-purple-500" },
 };
 
 const clinicTabs = [
-    { id: 'inicio', label: 'Ecosistema', icon: <Home size={16} /> },
     { id: 'miembros', label: 'Colaboradores', icon: <UserPlus size={16} /> },
-    { id: 'roles', label: 'Gobernanza', icon: <ShieldCheck size={16} /> },
-    { id: 'salas', label: 'Espacios', icon: <Layout size={16} /> },
+    { id: 'roles', label: 'Matriz de Permisos', icon: <ShieldCheck size={16} /> },
 ];
 
 export const Clinics = () => {
@@ -167,7 +163,9 @@ export const Clinics = () => {
                     </div>
                 </header>
 
-                <Tabs tabs={clinicTabs} activeTab={activeTab} onChange={setActiveTab} />
+                <div className="flex justify-center md:justify-start">
+                    <Tabs tabs={clinicTabs} activeTab={activeTab} onChange={setActiveTab} />
+                </div>
 
                 <div className="grid grid-cols-12 gap-10 mt-12">
 
@@ -260,13 +258,6 @@ export const Clinics = () => {
                                         togglingCap={togglingCap}
                                         onToggle={handleRoleCapToggle}
                                     />
-                                )}
-
-                                {(activeTab === 'inicio' || activeTab === 'salas') && (
-                                    <div className="h-80 flex flex-col items-center justify-center bg-white dark:bg-slate-800/20 border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-[2.5rem]">
-                                        <Layout className="text-slate-200 dark:text-slate-700 mb-4" size={48} strokeWidth={1} />
-                                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-[0.2em]">Módulo en optimización</p>
-                                    </div>
                                 )}
                             </>
                         )}

@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Calendar as CalendarIcon, RefreshCw, Loader2, Info,
     ExternalLink, MapPin, Clock, ChevronLeft, ChevronRight,
-    CheckCircle2, AlertCircle, Link as LinkIcon
+    CheckCircle2, AlertCircle, Link as LinkIcon, LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -21,9 +21,6 @@ const formatTime = (dateStr) => {
     return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
-const formatDate = (date) =>
-    date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-
 const isSameDay = (d1, d2) =>
     d1.getFullYear() === d2.getFullYear() &&
     d1.getMonth() === d2.getMonth() &&
@@ -35,19 +32,26 @@ export const CalendarPage = () => {
     const [searchParams] = useSearchParams();
 
     const [connected, setConnected] = useState(null); // null = loading
+    const [connectionEmail, setConnectionEmail] = useState(null);
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [connecting, setConnecting] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
 
     // Semana actual: array de 7 días desde lunes
-    const weekDays = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(selectedDate);
-        const day = d.getDay() || 7; // 0=domingo → 7
-        d.setDate(d.getDate() - day + 1 + i);
-        return d;
-    });
+    const weekDays = useMemo(() => {
+        return Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(selectedDate);
+            const day = d.getDay() || 7;
+            d.setDate(d.getDate() - day + 1 + i);
+            return d;
+        });
+    }, [selectedDate]);
 
+    /**
+     * Verificar status de conexión con el backend
+     * Esto persiste porque está guardado en BD
+     */
     const fetchStatus = useCallback(async () => {
         try {
             const res = await fetch(`${API}/api/calendar/status`, {
@@ -55,11 +59,16 @@ export const CalendarPage = () => {
             });
             const data = await res.json();
             setConnected(data.connected);
-        } catch {
+            setConnectionEmail(data.email);
+        } catch (err) {
+            console.error('Error fetching status:', err);
             setConnected(false);
         }
     }, []);
 
+    /**
+     * Obtener eventos de la semana
+     */
     const fetchEvents = useCallback(async () => {
         setLoading(true);
         try {
@@ -70,27 +79,56 @@ export const CalendarPage = () => {
             const data = await res.json();
             setConnected(data.connected);
             setEvents(data.data || []);
-        } catch {
+        } catch (err) {
+            console.error('Error fetching events:', err);
             toast.error('Error al cargar eventos');
         } finally {
             setLoading(false);
         }
-    }, [selectedDate]);
+    }, [weekDays]);
 
-    // Detectar callback de OAuth
+    /**
+     * Detectar callback de OAuth
+     * El backend ya guardó los tokens, solo confirmamos
+     */
     useEffect(() => {
-        if (searchParams.get('connected') === 'true') {
+        const connected = searchParams.get('connected');
+        const error = searchParams.get('error');
+
+        if (connected === 'true') {
             toast.success('¡Google Calendar conectado correctamente!');
+            fetchStatus();
             fetchEvents();
+            // Limpiar URL
+            navigate('/calendario', { replace: true });
         }
-        if (searchParams.get('error') === 'true') {
+        if (error === 'true') {
             toast.error('Error al conectar Google Calendar');
+            navigate('/calendario', { replace: true });
         }
-    }, []);
+    }, [searchParams, fetchStatus, fetchEvents, navigate]);
 
-    useEffect(() => { fetchStatus(); }, [fetchStatus]);
-    useEffect(() => { if (connected) fetchEvents(); else setLoading(false); }, [connected, fetchEvents]);
+    /**
+     * Verificar estado al montar
+     */
+    useEffect(() => {
+        fetchStatus();
+    }, [fetchStatus]);
 
+    /**
+     * Cargar eventos cuando está conectado
+     */
+    useEffect(() => {
+        if (connected) {
+            fetchEvents();
+        } else if (connected === false) {
+            setLoading(false);
+        }
+    }, [connected, fetchEvents]);
+
+    /**
+     * Iniciar flujo OAuth
+     */
     const handleConnect = async () => {
         setConnecting(true);
         try {
@@ -99,9 +137,28 @@ export const CalendarPage = () => {
             });
             const data = await res.json();
             window.location.href = data.url;
-        } catch {
+        } catch (err) {
             toast.error('Error al iniciar conexión con Google');
             setConnecting(false);
+        }
+    };
+
+    /**
+     * Desconectar Google Calendar
+     */
+    const handleDisconnect = async () => {
+        if (!window.confirm('¿Desconectar Google Calendar? Podrás reconectarlo en cualquier momento.')) return;
+
+        try {
+            await fetch(`${API}/api/calendar/disconnect`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${getToken()}` }
+            });
+            setConnected(false);
+            setEvents([]);
+            toast.success('Google Calendar desconectado');
+        } catch (err) {
+            toast.error('Error al desconectar');
         }
     };
 
@@ -120,7 +177,7 @@ export const CalendarPage = () => {
     const eventsForDay = (day) =>
         events.filter(e => isSameDay(new Date(e.start), day));
 
-    // ── Estado: cargando conexión ──
+    // Estado: cargando conexión
     if (connected === null) return (
         <div className="h-full flex items-center justify-center">
             <Loader2 className="animate-spin text-[#50e3c2]" size={28} />
@@ -139,7 +196,7 @@ export const CalendarPage = () => {
                     <div>
                         <div className="flex items-center gap-2 text-[#50e3c2] font-black text-[10px] uppercase tracking-[0.2em] mb-1">
                             <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-                            {connected ? 'Sincronizado con Google Calendar' : 'Sin conexión'}
+                            {connected ? `Sincronizado: ${connectionEmail || 'Google Calendar'}` : 'Sin conexión'}
                         </div>
                         <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
                             Control de <span className="text-[#50e3c2]">Citas</span>
@@ -171,6 +228,15 @@ export const CalendarPage = () => {
                             >
                                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                             </button>
+
+                            {/* Botón desconectar */}
+                            <button
+                                onClick={handleDisconnect}
+                                className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:text-red-500 transition-all shadow-sm"
+                                title="Desconectar Google Calendar"
+                            >
+                                <LogOut size={16} />
+                            </button>
                         </>
                     ) : (
                         <button
@@ -187,7 +253,7 @@ export const CalendarPage = () => {
                 </div>
             </header>
 
-            {/* ── Sin conexión ── */}
+            {/* Sin conexión */}
             {!connected && (
                 <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-3xl p-16 flex flex-col items-center text-center shadow-sm">
                     <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center mb-6 border border-slate-200 dark:border-slate-700">
@@ -210,7 +276,7 @@ export const CalendarPage = () => {
                 </div>
             )}
 
-            {/* ── Con conexión: grilla semanal ── */}
+            {/* Grilla semanal */}
             {connected && (
                 <div className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm">
 
@@ -327,7 +393,7 @@ export const CalendarPage = () => {
                 <Info size={16} className="text-[#50e3c2] shrink-0" />
                 <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     Las citas se sincronizan automáticamente desde Cal.com a través de Google Calendar.
-                    Para modificaciones avanzadas usá Google Calendar directamente.
+                    {connected && ` Conectado como ${connectionEmail}`}
                 </p>
             </footer>
         </div >

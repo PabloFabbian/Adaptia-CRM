@@ -1,0 +1,14 @@
+{
+  "name": "adaptia-clinic-root",
+  "version": "1.0.0",
+  "description": "Root management for Adaptia Clinic",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix Adaptia-Frontend\" \"npm run dev --prefix Adaptia-Backend\"",
+    "install-all": "npm install --prefix Adaptia-Frontend && npm install --prefix Adaptia-Backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

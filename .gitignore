@@ -1,5 +1,21 @@
+# Dependencias
+node_modules/
 Adaptia-Backend/node_modules/
 Adaptia-Frontend/node_modules/
+
+# Entorno
 .env
+.env.local
+.env.*
+
+# Construcción
 dist/
+build/
+
+# Logs
 *.log
+npm-debug.log*
+
+# Sistema
+.DS_Store
+Thumbs.db
